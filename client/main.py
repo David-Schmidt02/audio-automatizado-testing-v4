@@ -39,12 +39,41 @@ def create_null_sink():
     global identificador
     identificador = random.randint(0, 100000)
     sink_name = f"rtp-stream-{identificador}"
-    print(f"🎧 Creando PulseAudio sink: {sink_name}")
-    output = subprocess.check_output([
-        "pactl", "load-module", "module-null-sink", f"sink_name={sink_name}"
-    ])
-    log(f"Salida de pactl load-module:\n{output.decode().strip()}", "DEBUG")
-    return sink_name, output.decode().strip()
+    log(f"Creando PulseAudio sink: {sink_name}", "INFO")
+    
+    try:
+        output = subprocess.check_output([
+            "pactl", "load-module", "module-null-sink", f"sink_name={sink_name}"
+        ])
+        module_index = output.decode().strip()
+        log(f"Módulo creado con índice: {module_index}", "SUCCESS")
+        
+        # Verificar que el sink fue creado listando los sinks disponibles
+        time.sleep(1)  # Esperar un poco para que se inicialice
+        try:
+            sinks_output = subprocess.check_output(["pactl", "list", "short", "sinks"])
+            sinks_list = sinks_output.decode().strip()
+            log(f"Sinks disponibles:\n{sinks_list}", "DEBUG")
+            
+            # Verificar si nuestro sink está en la lista
+            if sink_name in sinks_list:
+                log(f"✅ Sink '{sink_name}' creado y disponible", "SUCCESS")
+            else:
+                log(f"⚠️ Sink '{sink_name}' no aparece en la lista de sinks", "WARN")
+                
+        except Exception as e:
+            log(f"Error verificando sinks: {e}", "ERROR")
+            
+        return sink_name, module_index
+        
+    except subprocess.CalledProcessError as e:
+        log(f"Error ejecutando pactl load-module: {e}", "ERROR")
+        log(f"Código de salida: {e.returncode}", "ERROR")
+        log(f"Salida stderr: {e.stderr}", "ERROR")
+        raise
+    except Exception as e:
+        log(f"Error inesperado creando sink: {e}", "ERROR")
+        raise
 
 def launch_firefox(url, sink_name):
     global identificador
@@ -150,6 +179,22 @@ def main():
 
     launch_firefox(url, sink_name)
     pulse_device = f"{sink_name}.monitor"
+    
+    # Verificar que el dispositivo monitor existe antes de usar parec
+    try:
+        sources_output = subprocess.check_output(["pactl", "list", "short", "sources"])
+        sources_list = sources_output.decode().strip()
+        log(f"Sources disponibles:\n{sources_list}", "DEBUG")
+        
+        if pulse_device in sources_list:
+            log(f"✅ Dispositivo monitor '{pulse_device}' encontrado", "SUCCESS")
+        else:
+            log(f"❌ Dispositivo monitor '{pulse_device}' NO encontrado", "ERROR")
+            log("Intentando con el nombre del sink directamente...", "INFO")
+            
+    except Exception as e:
+        log(f"Error verificando sources: {e}", "WARN")
+    
     parec_proc = start_parec_and_stream(destination, pulse_device)
 
     # Esperar señales
