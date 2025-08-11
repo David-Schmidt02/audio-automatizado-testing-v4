@@ -140,8 +140,9 @@ def found_sinks(output, firefox_pid):
     return firefox_sink_inputs
 
 def move_audio_to_sink(driver, sink_name):
-    log(f"Moviendo audio de Firefox específico al sink de PulseAudio: {sink_name}", "INFO")
-    # Obtener el PID del proceso de Firefox controlado por este driver
+    log(f"Moviendo streams de audio de esta instancia Firefox al sink: {sink_name}", "INFO")
+    
+    # Obtener el PID del proceso de Firefox específico
     try:
         firefox_pid = driver.service.process.pid
         log(f"PID de Firefox de este cliente: {firefox_pid}", "INFO")
@@ -149,36 +150,40 @@ def move_audio_to_sink(driver, sink_name):
         log(f"Error obteniendo PID de Firefox: {e}", "ERROR")
         return driver
     
-    # Listar los sink-inputs
+    # Listar los sink-inputs actuales
     try:
         output = subprocess.check_output(["pactl", "list", "sink-inputs"], text=True)
-        log("Listando sink-inputs de PulseAudio...", "INFO")
-        log(f"Salida de pactl list sink-inputs:\n{output}", "DEBUG")
-    except Exception as e:
-        log(f"Error al listar sink-inputs: {e}", "ERROR")
-        return driver
-
-    firefox_sink_inputs = found_sinks(output, firefox_pid)
-
-    if not firefox_sink_inputs:
-        log(f"No se encontró sink-input para Firefox PID {firefox_pid}", "WARN")
-        return driver
-
-    # Procesar cada sink-input encontrado
-    for sink_info in firefox_sink_inputs:
-        input_id = sink_info['input_id']
-        current_sink = sink_info['current_sink']
         
-        # Comparar sink actual con el deseado
-        if current_sink == sink_name:
-            log(f"Sink-input {input_id} ya está en el sink correcto '{sink_name}'", "SUCCESS")
-        else:
-            log(f"Moviendo sink-input {input_id} de '{current_sink}' a '{sink_name}'", "INFO")
-            try:
-                subprocess.run(["pactl", "move-sink-input", input_id, sink_name], check=True)
-                log(f"Sink-input {input_id} movido exitosamente a '{sink_name}'", "SUCCESS")
-            except Exception as e:
-                log(f"Error moviendo sink-input {input_id}: {e}", "ERROR")
+        if not output.strip():
+            log("No hay streams de audio activos en este momento", "WARN")
+            return driver
+            
+        log("Buscando streams de audio de Firefox...", "INFO")
+        firefox_sink_inputs = found_sinks(output, firefox_pid)
+        
+        if not firefox_sink_inputs:
+            log(f"No se encontraron streams para Firefox PID {firefox_pid}", "WARN")
+            log("Esto es normal si el video aún no ha iniciado audio", "INFO")
+            return driver
+        
+        # Mover cada stream encontrado al sink deseado
+        for sink_info in firefox_sink_inputs:
+            input_id = sink_info['input_id']
+            current_sink = sink_info['current_sink']
+            
+            if current_sink == sink_name:
+                log(f"Stream {input_id} ya está en el sink correcto '{sink_name}'", "SUCCESS")
+            else:
+                log(f"Moviendo stream {input_id} de '{current_sink}' a '{sink_name}'", "INFO")
+                try:
+                    subprocess.run(["pactl", "move-sink-input", input_id, sink_name], check=True)
+                    log(f"Stream {input_id} movido exitosamente a '{sink_name}'", "SUCCESS")
+                except Exception as e:
+                    log(f"Error moviendo stream {input_id}: {e}", "ERROR")
+                    
+    except Exception as e:
+        log(f"Error listando sink-inputs: {e}", "ERROR")
+    
     return driver
 
 def open_firefox_and_play_video(firefox_options, video_url, sink_name, service):
@@ -191,12 +196,21 @@ def open_firefox_and_play_video(firefox_options, video_url, sink_name, service):
     log(f"Navegando a live stream: {video_url}")
     driver.get(video_url)
 
-    driver = move_audio_to_sink(driver, sink_name)
-
     skip_ads(driver, timeout=60)
 
     log("Configurando live stream para grabación continua en Firefox...")
     script_js = obtener_path_js('live_stream_video.js')
+    driver.execute_script(script_js)
+    
+    # Esperar un poco para que el video inicie y genere audio
+    log("Esperando que el video inicie reproducción de audio...", "INFO")
+    time.sleep(5)
+    
+    # Ahora mover el audio específico de esta instancia al sink
+    driver = move_audio_to_sink(driver, sink_name)
+
+    log("Firefox iniciado y live stream configurado", "SUCCESS")
+    return driver
 
     driver.execute_script(script_js)
 

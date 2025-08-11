@@ -179,22 +179,6 @@ def main():
 
     launch_firefox(url, sink_name)
     pulse_device = f"{sink_name}.monitor"
-    
-    # Verificar que el dispositivo monitor existe antes de usar parec
-    try:
-        sources_output = subprocess.check_output(["pactl", "list", "short", "sources"])
-        sources_list = sources_output.decode().strip()
-        log(f"Sources disponibles:\n{sources_list}", "DEBUG")
-        
-        if pulse_device in sources_list:
-            log(f"✅ Dispositivo monitor '{pulse_device}' encontrado", "SUCCESS")
-        else:
-            log(f"❌ Dispositivo monitor '{pulse_device}' NO encontrado", "ERROR")
-            log("Intentando con el nombre del sink directamente...", "INFO")
-            
-    except Exception as e:
-        log(f"Error verificando sources: {e}", "WARN")
-    
     parec_proc = start_parec_and_stream(destination, pulse_device)
 
     # Esperar señales
