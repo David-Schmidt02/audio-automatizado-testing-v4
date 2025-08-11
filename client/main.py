@@ -17,6 +17,8 @@ from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 
+from logger_client import log
+
 # Parámetros
 SAMPLE_RATE = 48000 # Frecuencia de muestreo, determina la calidad del audio
 CHANNELS = 1 # Número de canales de audio
@@ -41,6 +43,7 @@ def create_null_sink():
     output = subprocess.check_output([
         "pactl", "load-module", "module-null-sink", f"sink_name={sink_name}"
     ])
+    log(f"Salida de pactl load-module:\n{output.decode().strip()}", "DEBUG")
     return sink_name, output.decode().strip()
 
 def launch_firefox(url, sink_name):

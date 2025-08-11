@@ -152,6 +152,8 @@ def move_audio_to_sink(driver, sink_name):
     # Listar los sink-inputs
     try:
         output = subprocess.check_output(["pactl", "list", "sink-inputs"], text=True)
+        log("Listando sink-inputs de PulseAudio...", "INFO")
+        log(f"Salida de pactl list sink-inputs:\n{output}", "DEBUG")
     except Exception as e:
         log(f"Error al listar sink-inputs: {e}", "ERROR")
         return driver
