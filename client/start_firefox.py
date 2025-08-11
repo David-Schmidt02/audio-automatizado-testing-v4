@@ -62,7 +62,7 @@ user_pref("general.useragent.override", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64;
     return profile_dir
 
 def obtener_path_js(path_script):
-    js_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', path_script)
+    js_path = os.path.join(os.path.dirname(__file__), path_script)
     with open(js_path, 'r', encoding='utf-8') as js_file:
             script_js = js_file.read()
     return script_js
