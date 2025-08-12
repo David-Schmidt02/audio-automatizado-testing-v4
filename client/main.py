@@ -35,11 +35,12 @@ firefox_process = None
 recording_thread = None
 selenium_driver = None
 ad_control_thread = None
+firefox_profile_dir = None
 
 
 def cleanup():
     """Limpieza de recursos al finalizar - siguiendo patrón Go."""
-    global sink_name, module_id, firefox_process, recording_thread, selenium_driver, ad_control_thread
+    global sink_name, module_id, firefox_process, recording_thread, selenium_driver, ad_control_thread, firefox_profile_dir
     
     print("\n🛑 Received shutdown signal. Cleaning up...")
     
@@ -66,6 +67,15 @@ def cleanup():
                 firefox_process.kill()
             except:
                 pass
+    
+    # Limpiar perfil temporal de Firefox
+    if firefox_profile_dir and os.path.exists(firefox_profile_dir):
+        try:
+            import shutil
+            shutil.rmtree(firefox_profile_dir)
+            print(f"🗑️ Perfil Firefox eliminado: {firefox_profile_dir}")
+        except Exception as e:
+            print(f"⚠️ Error eliminando perfil Firefox: {e}")
     
     # Esperar a que termine el hilo de grabación
     if recording_thread and recording_thread.is_alive():
@@ -124,26 +134,65 @@ def create_pulse_sink():
         return None
 
 
+def create_firefox_profile_with_autoplay():
+    """Crea un perfil temporal de Firefox con autoplay habilitado."""
+    import tempfile
+    global firefox_profile_dir
+    
+    # Crear directorio temporal para el perfil
+    firefox_profile_dir = tempfile.mkdtemp(prefix="firefox-autoplay-")
+    
+    # Crear archivo de preferencias
+    prefs_js = os.path.join(firefox_profile_dir, "prefs.js")
+    
+    preferences = [
+        '// Configuración optimizada para autoplay y captura de audio',
+        'user_pref("media.autoplay.default", 0);',  # 0 = permitir autoplay
+        'user_pref("media.autoplay.blocking_policy", 0);',  # No bloquear autoplay
+        'user_pref("media.volume_scale", "1.0");',  # Volumen máximo
+        'user_pref("dom.webnotifications.enabled", false);',  # Sin notificaciones
+        'user_pref("app.update.enabled", false);',  # Sin actualizaciones
+        'user_pref("browser.startup.homepage_override.mstone", "ignore");',  # Sin página de bienvenida
+        'user_pref("toolkit.startup.max_resumed_crashes", -1);',  # No mostrar recuperación
+        'user_pref("media.navigator.permission.disabled", true);',  # Sin permisos de medios
+        'user_pref("media.gmp-gmpopenh264.enabled", true);',  # Habilitar H264
+    ]
+    
+    try:
+        with open(prefs_js, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(preferences))
+        print(f"📁 Perfil Firefox creado: {firefox_profile_dir}")
+        return firefox_profile_dir
+    except Exception as e:
+        print(f"❌ Error creando perfil: {e}")
+        return None
+
+
 def launch_firefox(url, sink_name):
-    """Lanza Firefox con el sink preconfigurado - siguiendo patrón Go."""
+    """Lanza Firefox con el sink preconfigurado y autoplay habilitado."""
     global firefox_process
     
     print(f"🚀 Launching Firefox with URL: {url}")
+    
+    # Crear perfil con autoplay habilitado
+    profile_dir = create_firefox_profile_with_autoplay()
+    if not profile_dir:
+        print("⚠️ Usando perfil por defecto (sin autoplay optimizado)")
+        profile_args = []
+    else:
+        profile_args = ["--profile", profile_dir]
     
     # Configurar variables de entorno como en Go
     env = os.environ.copy()
     env["PULSE_SINK"] = sink_name
     
     try:
-        # Lanzar Firefox con sink preconfigurado
-        firefox_process = subprocess.Popen([
-            "firefox",
-            "--new-instance", 
-            "--new-window",
-            url
-        ], env=env)
+        # Lanzar Firefox con sink preconfigurado y perfil optimizado
+        cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
         
-        print("✅ Firefox launched with preconfigured audio sink")
+        firefox_process = subprocess.Popen(cmd, env=env)
+        
+        print("✅ Firefox launched with preconfigured audio sink and autoplay")
         return True
         
     except Exception as e:
@@ -166,7 +215,13 @@ def setup_selenium_driver(url):
         firefox_options = Options()
         firefox_options.add_argument("--width=1280")
         firefox_options.add_argument("--height=720")
-        firefox_options.add_argument("--autoplay")  # Habilitar autoplay
+        
+        # Configurar preferencias para autoplay y audio
+        firefox_options.set_preference("media.autoplay.default", 0)  # 0 = permitir autoplay
+        firefox_options.set_preference("media.autoplay.blocking_policy", 0)  # No bloquear autoplay
+        firefox_options.set_preference("media.volume_scale", "1.0")  # Volumen máximo
+        firefox_options.set_preference("dom.webnotifications.enabled", False)  # Sin notificaciones
+        firefox_options.set_preference("media.navigator.permission.disabled", True)  # Sin permisos de medios
         
         # Inicializar driver
         selenium_driver = webdriver.Firefox(options=firefox_options)
