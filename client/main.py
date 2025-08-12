@@ -123,11 +123,11 @@ def create_null_sink():
     global module_id
     global pulse_device
     identificador = random.randint(0, 100000)
-    sink_name = f"rtp-stream-{identificador}"
+    sink_name = f"sink-{identificador}"
     log(f"Creando PulseAudio sink: {sink_name}", "INFO")
     
     try:
-        # Al ejecutar pactl load-module module-null-sink "sink_name = "rtp-stream-{identificador}" se crea el sink
+        # Al ejecutar pactl load-module module-null-sink "sink_name = "sink-{identificador}" se crea el sink
         output = subprocess.check_output([
             "pactl", "load-module", "module-null-sink", f"sink_name={sink_name}"
         ])
