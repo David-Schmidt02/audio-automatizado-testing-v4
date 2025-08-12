@@ -166,6 +166,7 @@ def setup_selenium_driver(url):
         firefox_options = Options()
         firefox_options.add_argument("--width=1280")
         firefox_options.add_argument("--height=720")
+        firefox_options.add_argument("--autoplay")  # Habilitar autoplay
         
         # Inicializar driver
         selenium_driver = webdriver.Firefox(options=firefox_options)
