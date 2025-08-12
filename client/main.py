@@ -325,30 +325,61 @@ def signal_handler(sig, frame):
     cleanup()
     sys.exit(0)
 
-# funcion temporal
-def guardar_wav(pulse_device, output_file):
-    segundos = 15
-    """Guarda el audio capturado en un archivo WAV."""
-    cmd = [
-        "ffmpeg",
-        "-f", "pulse",
-        "-i", pulse_device,
-        "-acodec", "pcm_s16le",
-        "-ar", str(SAMPLE_RATE),
-        "-ac", str(CHANNELS),
-        output_file
-    ]
-    subprocess.Popen(cmd)
+# Función para guardar WAVs cada 15 segundos
+def guardar_wav_cada_15_segundos(pulse_device):
+    """Guarda un archivo WAV cada 15 segundos con timestamp único."""
+    def grabar_continuamente():
+        contador = 1
+        while True:
+            try:
+                # Crear nombre de archivo con timestamp
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                output_file = f"audio_chunk_{timestamp}_{contador:03d}.wav"
+                
+                log(f"🎵 Iniciando grabación: {output_file}", "INFO")
+                
+                # Comando ffmpeg para grabar exactamente 15 segundos
+                cmd = [
+                    "ffmpeg",
+                    "-y",  # Sobrescribir archivo si existe
+                    "-f", "pulse",
+                    "-i", pulse_device,
+                    "-t", "15",  # Duración de 15 segundos
+                    "-acodec", "pcm_s16le",
+                    "-ar", str(SAMPLE_RATE),
+                    "-ac", str(CHANNELS),
+                    output_file
+                ]
+                
+                # Ejecutar ffmpeg y esperar a que termine
+                proc = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if proc.returncode == 0:
+                    log(f"✅ Grabación completada: {output_file}", "SUCCESS")
+                else:
+                    log(f"❌ Error en grabación: {proc.stderr}", "ERROR")
+                
+                contador += 1
+                
+            except Exception as e:
+                log(f"Error grabando WAV: {e}", "ERROR")
+                time.sleep(5)  # Esperar antes de reintentar
+    
+    # Iniciar hilo de grabación
+    recording_thread = threading.Thread(target=grabar_continuamente, daemon=True)
+    recording_thread.start()
+    log("🎙️ Sistema de grabación WAV iniciado (cada 15 segundos)", "SUCCESS")
+    return recording_thread
 
 def main():
     global parec_proc, module_id, pulse_device
 
-    if len(sys.argv) != 3:
+    """if len(sys.argv) != 3:
         print(f"Uso: {sys.argv[0]} <URL> <host:puerto>")
         sys.exit(1)
-
+    """
     url = sys.argv[1]
-    destination = sys.argv[2]
+    #destination = sys.argv[2]
 
     sink_name, module_id = create_null_sink()
     time.sleep(2)  # esperar inicialización sink
@@ -369,7 +400,11 @@ def main():
     else:
         log("Advertencia: No se pudo verificar la captura de audio", "WARN")
     
-    guardar_wav(pulse_device, "output.wav")
+    # Iniciar grabación WAV cada 15 segundos
+    guardar_wav_cada_15_segundos(pulse_device)
+    
+    log("📁 Sistema listo - Grabando archivos WAV cada 15 segundos", "SUCCESS")
+    log("🔴 Presiona Ctrl+C para detener", "INFO")
     #parec_proc = start_parec_and_stream(destination, pulse_device)
 
     # Esperar señales
