@@ -10,7 +10,8 @@ import struct
 import shutil
 import psutil
 from pathlib import Path
-from start_firefox import clean_and_create_selenium_profile, configuracion_firefox, open_firefox_and_play_video
+from start_firefox import clean_and_create_selenium_profile, configuracion_firefox, open_firefox_and_get_pid, move_firefox_audio_to_sink, load_video_and_configure
+from youtube_js_utils import YouTubeJSUtils, get_youtube_player_state, activate_youtube_video, force_youtube_audio_refresh
 # Importaciones para Selenium
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
@@ -28,55 +29,20 @@ PAYLOAD_TYPE_L16 = 96 # Tipo de carga útil para audio lineal de 16 bits
 RTP_CLOCK_RATE = 48000 # Frecuencia de reloj RTP
 MTU = 1500 # Unidad máxima de transmisión
 
-parec_proc = None
-module_index = None
-profile_dir = None
-identificador = None
-driver = None
-service = Service(GeckoDriverManager().install())
+# Identificadores para PulseAudio
+module_id = None # ID del módulo creado
+sink_index = None # Índice del sink creado
+pulse_device = None # Dispositivo PulseAudio del monitor del sink
 
-def monitor_javascript_health(driver, interval=30):
-    """Monitorea la salud del JavaScript periódicamente"""
-    if not driver:
-        return
-        
-    def check_js_health():
-        while True:
-            try:
-                # Importar la función de verificación
-                from start_firefox import verificar_estado_javascript
-                
-                if verificar_estado_javascript(driver):
-                    log("JavaScript health check: OK", "DEBUG")
-                else:
-                    log("JavaScript health check: PROBLEMA DETECTADO", "WARN")
-                    # Aquí podrías reinicializar el JavaScript si es necesario
-                    
-            except Exception as e:
-                log(f"Error en health check: {e}", "ERROR")
-                break
-                
-            time.sleep(interval)
-    
-    # Ejecutar en hilo separado
-    health_thread = threading.Thread(target=check_js_health, daemon=True)
-    health_thread.start()
-    return health_thread
+identificador = None # Identificador del sink creado -> Revisar si es necesario
 
-def get_audio_streams_for_firefox(firefox_pid):
-    """Obtiene todos los streams de audio asociados a un PID específico de Firefox"""
-    try:
-        streams_output = subprocess.check_output(["pactl", "list", "short", "sink-inputs"])
-        firefox_streams = []
-        for line in streams_output.decode().split('\n'):
-            if line.strip() and str(firefox_pid) in line:
-                stream_index = line.split('\t')[0]
-                firefox_streams.append(stream_index)
-                log(f"Stream encontrado para Firefox PID {firefox_pid}: {stream_index}", "DEBUG")
-        return firefox_streams
-    except Exception as e:
-        log(f"Error obteniendo streams de Firefox: {e}", "ERROR")
-        return []
+parec_proc = None # Proceso parec
+profile_dir = None # Directorio del perfil de Firefox para esta instancia 
+
+# Configuración de Selenium
+driver = None # Controlador de Firefox
+service = Service(GeckoDriverManager().install()) # Servicio de GeckoDriver
+firefox_pid = None # PID del proceso de Firefox
 
 def verify_audio_capture(sink_name, timeout=10):
     """Verifica que el sink monitor está capturando audio"""
@@ -115,72 +81,64 @@ def verify_audio_capture(sink_name, timeout=10):
         log(f"Error verificando captura de audio: {e}", "ERROR")
         return False
 
-def move_firefox_to_sink(firefox_pid, sink_name):
-    """Mueve el audio de Firefox específico al sink específico"""
-    streams = get_audio_streams_for_firefox(firefox_pid)
-    moved_count = 0
-    
-    for stream_index in streams:
-        try:
-            subprocess.run(["pactl", "move-sink-input", stream_index, sink_name], check=True)
-            log(f"✅ Stream {stream_index} movido a sink {sink_name}", "SUCCESS")
-            moved_count += 1
-        except subprocess.CalledProcessError as e:
-            log(f"Error moviendo stream {stream_index}: {e}", "ERROR")
-    
-    if moved_count > 0:
-        log(f"Total streams movidos: {moved_count}", "SUCCESS")
-        return True
-    else:
-        log(f"No se pudieron mover streams para Firefox PID {firefox_pid}", "WARN")
-        return False
+#-----------------------------------------------------------------------------------------------------------------#
 
+# 1.2 - Verifica el monitor del sink creado
+def verify_monitor_creation(monitor_name):
+    log(f"Verificando creación de monitor: {monitor_name}", "INFO")
+    try:
+        sources_output = subprocess.check_output(["pactl", "list", "short", "sources"])
+        sources_list = sources_output.decode().strip()
+        log(f"Monitores disponibles:\n{sources_list}", "DEBUG")
+
+        if monitor_name in sources_list:
+            log(f"✅ Monitor '{monitor_name}' creado y disponible", "SUCCESS")
+        else:
+            log(f"⚠️ Monitor '{monitor_name}' no aparece en la lista de monitores", "WARN")
+
+    except Exception as e:
+        log(f"Error verificando monitores: {e}", "ERROR")
+
+# 1.1 -Verifica la creacion del sink
+def verify_sink_creation(sink_name):
+    log(f"Verificando creación de sink: {sink_name}", "INFO")
+    try:
+        sinks_output = subprocess.check_output(["pactl", "list", "short", "sinks"])
+        sinks_list = sinks_output.decode().strip()
+        log(f"Sinks disponibles:\n{sinks_list}", "DEBUG")
+
+        if sink_name in sinks_list:
+            log(f"✅ Sink '{sink_name}' creado y disponible", "SUCCESS")
+        else:
+            log(f"⚠️ Sink '{sink_name}' no aparece en la lista de sinks", "WARN")
+
+    except Exception as e:
+        log(f"Error verificando sinks: {e}", "ERROR")
+    verify_monitor_creation(f"{sink_name}.monitor")
+
+# 1 - Se crea el Sink de audio con un id único 
 def create_null_sink():
     global identificador
+    global module_id
+    global pulse_device
     identificador = random.randint(0, 100000)
     sink_name = f"rtp-stream-{identificador}"
     log(f"Creando PulseAudio sink: {sink_name}", "INFO")
     
     try:
+        # Al ejecutar pactl load-module module-null-sink "sink_name = "rtp-stream-{identificador}" se crea el sink
         output = subprocess.check_output([
             "pactl", "load-module", "module-null-sink", f"sink_name={sink_name}"
         ])
-        module_index = output.decode().strip()
-        log(f"Módulo creado con índice: {module_index}", "SUCCESS")
-        
+        # Obtenemos el id del módulo del sink creado -> sirve para descargarlo/limpiarlo despues
+        module_id = output.decode().strip()
+        log(f"Módulo creado con id: {module_id}", "SUCCESS")
+
         # Verificar que el sink fue creado listando los sinks disponibles
-        time.sleep(1)  # Esperar un poco para que se inicialice
-        try:
-            sinks_output = subprocess.check_output(["pactl", "list", "short", "sinks"])
-            sinks_list = sinks_output.decode().strip()
-            log(f"Sinks disponibles:\n{sinks_list}", "DEBUG")
-            
-            # Verificar si nuestro sink está en la lista
-            if sink_name in sinks_list:
-                log(f"✅ Sink '{sink_name}' creado y disponible", "SUCCESS")
-            else:
-                log(f"⚠️ Sink '{sink_name}' no aparece en la lista de sinks", "WARN")
-            
-            # Verificar también el monitor correspondiente
-            sources_output = subprocess.check_output(["pactl", "list", "short", "sources"])
-            sources_list = sources_output.decode().strip()
-            monitor_name = f"{sink_name}.monitor"
-            
-            if monitor_name in sources_list:
-                log(f"✅ Monitor '{monitor_name}' disponible", "SUCCESS")
-                # Extraer el índice del monitor para uso futuro
-                for line in sources_list.split('\n'):
-                    if monitor_name in line:
-                        monitor_index = line.split('\t')[0]
-                        log(f"Monitor index: {monitor_index}", "DEBUG")
-                        break
-            else:
-                log(f"⚠️ Monitor '{monitor_name}' no encontrado", "WARN")
-                
-        except Exception as e:
-            log(f"Error verificando sinks: {e}", "ERROR")
-            
-        return sink_name, module_index
+        time.sleep(2)  # Esperar un poco para que se inicialice
+        verify_sink_creation(sink_name) # Tambien verifica el monitor dentro
+        pulse_device = f"{sink_name}.monitor"
+        return sink_name, module_id
         
     except subprocess.CalledProcessError as e:
         log(f"Error ejecutando pactl load-module: {e}", "ERROR")
@@ -191,85 +149,84 @@ def create_null_sink():
         log(f"Error inesperado creando sink: {e}", "ERROR")
         raise
 
+#-----------------------------------------------------------------------------------------------------------------#
+
+# 2 - Se crea el perfil de Firefox, se configura Firefox y se lo lanza
 def launch_firefox(url, sink_name):
     global identificador
     global profile_dir
     global driver
     global service
-    profile_dir = clean_and_create_selenium_profile(identificador)
+    global firefox_pid
+
+    profile_dir = clean_and_create_selenium_profile(identificador) # 2.1 Se crea un perfil temporal para Firefox con un identificador único que puede utilizar selenium
     # Configuración de Firefox
     firefox_options = Options()
-    firefox_options = configuracion_firefox(firefox_options)
+    firefox_options = configuracion_firefox(firefox_options) # 2.2 Configuraciones adicionales para el perfil de firefox
     profile = FirefoxProfile(profile_directory=profile_dir)
     firefox_options.profile = profile
     # Iniciar el navegador
-    driver = open_firefox_and_play_video(firefox_options, url, sink_name, service)
-    
-    # Obtener el PID del proceso Firefox para identificarlo
-    try:
-        # El driver de Selenium mantiene referencia al proceso
-        firefox_pid = None
-        if hasattr(driver, 'service') and hasattr(driver.service, 'process'):
-            firefox_pid = driver.service.process.pid
-            log(f"Firefox PID: {firefox_pid}", "DEBUG")
-        
-        # También puedes buscar por el perfil específico
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+    driver, firefox_pid = open_firefox_and_get_pid(firefox_options, service) # 2.3 Inicia Firefox y retorna su PID
+
+    if firefox_pid:
+        # Mover audio de Firefox al sink
+        move_firefox_audio_to_sink(firefox_pid, sink_name) # 2.4 Movemos el stream de esta instancia de firefox al sink creado
+        # Cargar URL y configurar JS
+        load_video_and_configure(driver, url) # 2.5 Cargar la URL y configurar el JavaScript
+    else:
+        log("No se pudo iniciar Firefox correctamente", "ERROR")
+
+#-----------------------------------------------------------------------------------------------------------------#
+
+# 3.1 - Verificación del estado de JavaScript, utilizando la clase YouTubeJSUtils
+def verificar_estado_javascript(driver):
+    state = get_youtube_player_state(driver)
+    if not state or not state.get('hasVideo'):
+        log("No hay video cargado", "WARN")
+        return False
+    if state.get('videoError'):
+        log(f"Error en video: {state['videoError']}", "ERROR")
+        # Lógica para manejar error de video
+        return False
+    if state.get('videoEnded'):
+        log("Video terminado", "WARN")
+        # Lógica para manejar video terminado
+        return False
+    if state.get('videoPaused'):
+        log("Video pausado, intentando reactivar...", "WARN")
+        activate_youtube_video(driver)
+        time.sleep(1)
+        # Revisar si logró reactivar
+        return YouTubeJSUtils.is_video_playing(driver)
+    if state.get('videoReadyState', 0) < 3:
+        log("Video no listo para reproducir", "WARN")
+        return False
+    return True
+# 3 - Monitoreo del estado de JavaScript
+def monitor_javascript_health(driver, interval=30):
+    if not driver:
+        return
+
+    def check_js_health():
+        while True:
             try:
-                if 'firefox' in proc.info['name'].lower():
-                    cmdline = proc.info['cmdline']
-                    # Verificar que cmdline es una lista antes de hacer join
-                    if isinstance(cmdline, list):
-                        cmdline_str = ' '.join(cmdline)
-                    else:
-                        cmdline_str = str(cmdline) if cmdline else ""
-                    
-                    if f"selenium-vm-profile-{identificador}" in cmdline_str:
-                        firefox_pid = proc.info['pid']
-                        log(f"Firefox encontrado por perfil - PID: {firefox_pid}", "SUCCESS")
-                        break
-            except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, AttributeError):
-                continue
-                
-        if firefox_pid:
-            log(f"Firefox identificado - PID: {firefox_pid}, Sink: {sink_name}", "SUCCESS")
-            
-            # Esperar un poco para que Firefox inicie completamente y reproduzca audio
-            time.sleep(3)
-            
-            # Mover el audio de Firefox al sink específico
-            if move_firefox_to_sink(firefox_pid, sink_name):
-                log(f"Audio de Firefox redirigido correctamente al sink {sink_name}", "SUCCESS")
-            else:
-                log(f"No se pudo redirigir audio de Firefox. Intentando método alternativo...", "WARN")
-                # Método alternativo: buscar por aplicación Firefox en general
-                try:
-                    # Listar todos los sink-inputs y buscar por aplicación "Firefox"
-                    streams_output = subprocess.check_output(["pactl", "list", "sink-inputs"])
-                    streams_text = streams_output.decode()
-                    
-                    # Buscar índices de streams de Firefox
-                    import re
-                    firefox_pattern = r'Sink Input #(\d+).*?application\.name = "Firefox"'
-                    matches = re.findall(firefox_pattern, streams_text, re.DOTALL | re.IGNORECASE)
-                    
-                    for stream_id in matches:
-                        try:
-                            subprocess.run(["pactl", "move-sink-input", stream_id, sink_name], check=True)
-                            log(f"✅ Stream Firefox #{stream_id} movido por método alternativo", "SUCCESS")
-                        except:
-                            continue
-                            
-                except Exception as e:
-                    log(f"Error en método alternativo: {e}", "ERROR")
-            
-            return firefox_pid
-            
-    except Exception as e:
-        log(f"Error identificando Firefox: {e}", "WARN")
-    
-    print(f"🦊 Perfil temporal: {profile_dir}")
-    return None
+                if verificar_estado_javascript(driver):
+                    log("JavaScript health check: OK", "DEBUG")
+                else:
+                    log("JavaScript health check: PROBLEMA DETECTADO", "WARN")
+                    # Aquí podrías usar force_youtube_audio_refresh(driver) o estrategias similares
+
+            except Exception as e:
+                log(f"Error en health check: {e}", "ERROR")
+                break
+
+            time.sleep(interval)
+
+    health_thread = threading.Thread(target=check_js_health, daemon=True)
+    health_thread.start()
+    return health_thread
+
+#-----------------------------------------------------------------------------------------------------------------#
 
 def start_parec_and_stream(destination, pulse_device):
     global parec_proc
@@ -319,75 +276,46 @@ def start_parec_and_stream(destination, pulse_device):
     return parec_proc
 
 def cleanup():
-    global driver, parec_proc, module_index, profile_dir, identificador
+    global driver, parec_proc, module_id, profile_dir
+    
     print("\n🛑 Limpiando...")
-    
-    if driver:
-        try:
-            # Intentar obtener el PID antes de cerrar para limpieza completa
-            firefox_pid = None
-            if identificador:
-                try:
-                    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                        try:
-                            if 'firefox' in proc.info['name'].lower():
-                                cmdline = proc.info['cmdline']
-                                # Verificar que cmdline es una lista antes de hacer join
-                                if isinstance(cmdline, list):
-                                    cmdline_str = ' '.join(cmdline)
-                                else:
-                                    cmdline_str = str(cmdline) if cmdline else ""
-                                    
-                                if f"selenium-vm-profile-{identificador}" in cmdline_str:
-                                    firefox_pid = proc.info['pid']
-                                    log(f"Firefox PID encontrado para cleanup: {firefox_pid}", "DEBUG")
-                                    break
-                        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, AttributeError):
-                            continue
-                except:
-                    pass
-            
+    try:
+        if driver:
             driver.quit()
-            log("Driver de Firefox cerrado", "SUCCESS")
-            
-            # Si encontramos el PID, mostrar streams que se están cerrando
-            if firefox_pid:
-                try:
-                    streams = get_audio_streams_for_firefox(firefox_pid)
-                    if streams:
-                        log(f"Streams de audio cerrados: {streams}", "DEBUG")
-                except:
-                    pass
-                    
-        except Exception as e:
-            log(f"Error cerrando driver: {e}", "ERROR")
-    
-    if parec_proc and parec_proc.poll() is None:
-        parec_proc.kill()
-        log("Proceso parec terminado", "SUCCESS")
-        
-    if module_index:
-        try:
-            subprocess.run(["pactl", "unload-module", module_index], check=True)
-            log(f"Módulo PulseAudio {module_index} descargado", "SUCCESS")
-        except Exception as e:
-            log(f"Error descargando módulo: {e}", "ERROR")
-            
-    if profile_dir and os.path.exists(profile_dir):
-        try:
+            print("Driver de Firefox cerrado")
+    except Exception as e:
+        print(f"Error cerrando driver: {e}")
+
+    try:
+        if parec_proc and parec_proc.poll() is None:
+            parec_proc.kill()
+            print("Proceso parec terminado")
+    except Exception as e:
+        print(f"Error terminando proceso parec: {e}")
+
+    try:
+        if module_id:
+            subprocess.run(["pactl", "unload-module", module_id], check=True)
+            print(f"Módulo PulseAudio {module_id} descargado")
+    except Exception as e:
+        print(f"Error descargando módulo PulseAudio: {e}")
+
+    try:
+        if profile_dir and os.path.exists(profile_dir):
             shutil.rmtree(profile_dir)
-            log(f"Perfil temporal eliminado: {profile_dir}", "SUCCESS")
-        except Exception as e:
-            log(f"Error eliminando perfil: {e}", "ERROR")
-            
+            print(f"Perfil temporal eliminado: {profile_dir}")
+    except Exception as e:
+        print(f"Error eliminando perfil temporal: {e}")
+
     print("✅ Limpieza completa.")
+
 
 def signal_handler(sig, frame):
     cleanup()
     sys.exit(0)
 
 def main():
-    global parec_proc, module_index
+    global parec_proc, module_id, pulse_device
 
     if len(sys.argv) != 3:
         print(f"Uso: {sys.argv[0]} <URL> <host:puerto>")
@@ -396,15 +324,14 @@ def main():
     url = sys.argv[1]
     destination = sys.argv[2]
 
-    sink_name, module_index = create_null_sink()
+    sink_name, module_id = create_null_sink()
     time.sleep(2)  # esperar inicialización sink
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    firefox_pid = launch_firefox(url, sink_name)
-    pulse_device = f"{sink_name}.monitor"
-    
+    launch_firefox(url, sink_name)
+
     # Iniciar monitoreo de JavaScript
     if driver:
         log("Iniciando monitoreo de JavaScript...", "INFO")
