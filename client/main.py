@@ -35,6 +35,34 @@ identificador = None
 driver = None
 service = Service(GeckoDriverManager().install())
 
+def monitor_javascript_health(driver, interval=30):
+    """Monitorea la salud del JavaScript periódicamente"""
+    if not driver:
+        return
+        
+    def check_js_health():
+        while True:
+            try:
+                # Importar la función de verificación
+                from start_firefox import verificar_estado_javascript
+                
+                if verificar_estado_javascript(driver):
+                    log("JavaScript health check: OK", "DEBUG")
+                else:
+                    log("JavaScript health check: PROBLEMA DETECTADO", "WARN")
+                    # Aquí podrías reinicializar el JavaScript si es necesario
+                    
+            except Exception as e:
+                log(f"Error en health check: {e}", "ERROR")
+                break
+                
+            time.sleep(interval)
+    
+    # Ejecutar en hilo separado
+    health_thread = threading.Thread(target=check_js_health, daemon=True)
+    health_thread.start()
+    return health_thread
+
 def get_audio_streams_for_firefox(firefox_pid):
     """Obtiene todos los streams de audio asociados a un PID específico de Firefox"""
     try:
@@ -189,12 +217,18 @@ def launch_firefox(url, sink_name):
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
                 if 'firefox' in proc.info['name'].lower():
-                    cmdline = ' '.join(proc.info['cmdline'])
-                    if f"selenium-vm-profile-{identificador}" in cmdline:
+                    cmdline = proc.info['cmdline']
+                    # Verificar que cmdline es una lista antes de hacer join
+                    if isinstance(cmdline, list):
+                        cmdline_str = ' '.join(cmdline)
+                    else:
+                        cmdline_str = str(cmdline) if cmdline else ""
+                    
+                    if f"selenium-vm-profile-{identificador}" in cmdline_str:
                         firefox_pid = proc.info['pid']
                         log(f"Firefox encontrado por perfil - PID: {firefox_pid}", "SUCCESS")
                         break
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, AttributeError):
                 continue
                 
         if firefox_pid:
@@ -297,12 +331,18 @@ def cleanup():
                     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                         try:
                             if 'firefox' in proc.info['name'].lower():
-                                cmdline = ' '.join(proc.info['cmdline'])
-                                if f"selenium-vm-profile-{identificador}" in cmdline:
+                                cmdline = proc.info['cmdline']
+                                # Verificar que cmdline es una lista antes de hacer join
+                                if isinstance(cmdline, list):
+                                    cmdline_str = ' '.join(cmdline)
+                                else:
+                                    cmdline_str = str(cmdline) if cmdline else ""
+                                    
+                                if f"selenium-vm-profile-{identificador}" in cmdline_str:
                                     firefox_pid = proc.info['pid']
                                     log(f"Firefox PID encontrado para cleanup: {firefox_pid}", "DEBUG")
                                     break
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, AttributeError):
                             continue
                 except:
                     pass
@@ -364,6 +404,11 @@ def main():
 
     firefox_pid = launch_firefox(url, sink_name)
     pulse_device = f"{sink_name}.monitor"
+    
+    # Iniciar monitoreo de JavaScript
+    if driver:
+        log("Iniciando monitoreo de JavaScript...", "INFO")
+        monitor_javascript_health(driver, interval=60)  # Verificar cada minuto
     
     # Verificar que el audio se está capturando correctamente
     if verify_audio_capture(sink_name):

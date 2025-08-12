@@ -61,6 +61,51 @@ user_pref("general.useragent.override", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64;
     log("Perfil nuevo creado y listo para usar", "SUCCESS")
     return profile_dir
 
+def verificar_estado_javascript(driver):
+    """Verifica si los scripts JavaScript están funcionando correctamente"""
+    try:
+        # Verificar el estado del video y los event listeners
+        estado = driver.execute_script("""
+            var video = document.querySelector('video');
+            if (!video) return {error: 'No video element found'};
+            
+            // Verificar propiedades del video
+            var videoState = {
+                exists: true,
+                muted: video.muted,
+                volume: video.volume,
+                paused: video.paused,
+                ended: video.ended,
+                duration: video.duration,
+                currentTime: video.currentTime,
+                isLive: video.duration === Infinity || isNaN(video.duration),
+                readyState: video.readyState
+            };
+            
+            // Verificar si nuestros event listeners están activos
+            var hasCustomPause = video.pause !== HTMLVideoElement.prototype.pause;
+            videoState.customPauseActive = hasCustomPause;
+            
+            // Verificar eventos de visibilidad
+            var hasVisibilityListener = document.hasOwnProperty('visibilityListeners');
+            videoState.visibilityListenerActive = hasVisibilityListener;
+            
+            return videoState;
+        """)
+        
+        if 'error' in estado:
+            log(f"Error en verificación JS: {estado['error']}", "ERROR")
+            return False
+            
+        log(f"Estado del video: Muted={estado.get('muted')}, Volume={estado.get('volume')}, Paused={estado.get('paused')}, Live={estado.get('isLive')}", "INFO")
+        log(f"Custom pause interceptor activo: {estado.get('customPauseActive')}", "DEBUG")
+        
+        return True
+        
+    except Exception as e:
+        log(f"Error verificando JavaScript: {e}", "ERROR")
+        return False
+
 def obtener_path_js(path_script):
     js_path = os.path.join(os.path.dirname(__file__), path_script)
     with open(js_path, 'r', encoding='utf-8') as js_file:
@@ -188,6 +233,7 @@ def move_audio_to_sink(driver, sink_name):
 
 def open_firefox_and_play_video(firefox_options, video_url, sink_name, service):
     log("Iniciando Firefox con Selenium para LIVE STREAM...")
+    log("VERSIÓN DE start_firefox.py: v2.0 - Con verificación de JavaScript", "DEBUG")
     driver = webdriver.Firefox(service=service, options=firefox_options)
 
     # Ejecutar script para ocultar mejor que somos un bot
@@ -199,20 +245,58 @@ def open_firefox_and_play_video(firefox_options, video_url, sink_name, service):
     skip_ads(driver, timeout=60)
 
     log("Configurando live stream para grabación continua en Firefox...")
-    script_js = obtener_path_js('live_stream_video.js')
-    driver.execute_script(script_js)
+    try:
+        script_js = obtener_path_js('live_stream_video.js')
+        log(f"JavaScript cargado: {len(script_js)} caracteres", "DEBUG")
+        
+        # Ejecutar el script y verificar si se ejecutó correctamente
+        result = driver.execute_script(script_js)
+        log("Script JavaScript ejecutado exitosamente", "SUCCESS")
+        
+        # Verificar que el video existe y está configurado
+        video_check = driver.execute_script("""
+            var video = document.querySelector('video');
+            if (video) {
+                return {
+                    found: true,
+                    muted: video.muted,
+                    volume: video.volume,
+                    paused: video.paused,
+                    duration: video.duration,
+                    currentTime: video.currentTime
+                };
+            }
+            return {found: false};
+        """)
+        
+        if video_check and video_check.get('found'):
+            log(f"Video encontrado y configurado: muted={video_check.get('muted')}, volume={video_check.get('volume')}, paused={video_check.get('paused')}", "SUCCESS")
+        else:
+            log("Advertencia: No se encontró elemento video en la página", "WARN")
+            
+    except Exception as e:
+        log(f"Error ejecutando JavaScript: {e}", "ERROR")
     
     # Esperar un poco para que el video inicie y genere audio
     log("Esperando que el video inicie reproducción de audio...", "INFO")
     time.sleep(5)
     
+    # Verificar que el JavaScript está funcionando
+    if verificar_estado_javascript(driver):
+        log("JavaScript funcionando correctamente", "SUCCESS")
+    else:
+        log("Problema con JavaScript, reintentando configuración...", "WARN")
+        try:
+            # Reintentar la ejecución del script
+            script_js = obtener_path_js('live_stream_video.js')
+            driver.execute_script(script_js)
+            time.sleep(2)
+            verificar_estado_javascript(driver)
+        except Exception as e:
+            log(f"Error en reintento de JavaScript: {e}", "ERROR")
+    
     # Ahora mover el audio específico de esta instancia al sink
     driver = move_audio_to_sink(driver, sink_name)
-
-    log("Firefox iniciado y live stream configurado", "SUCCESS")
-    return driver
-
-    driver.execute_script(script_js)
 
     log("Firefox iniciado y live stream configurado", "SUCCESS")
     return driver
