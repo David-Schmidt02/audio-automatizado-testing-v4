@@ -38,7 +38,10 @@ pulse_device = None # Dispositivo PulseAudio del monitor del sink
 identificador = None # Identificador del sink creado -> Revisar si es necesario
 
 parec_proc = None # Proceso parec
-profile_dir = None # Directorio del perfil de Firefox para esta instancia 
+profile_dir = None # Directorio del perfil de Firefox para esta instancia
+
+# Event para controlar hilos
+stop_event = threading.Event() 
 
 # Configuración de Selenium
 driver = None # Controlador de Firefox
@@ -287,9 +290,13 @@ def start_parec_and_stream(destination, pulse_device):
     return parec_proc
 
 def cleanup():
-    global driver, parec_proc, module_id, profile_dir
+    global driver, parec_proc, module_id, profile_dir, stop_event
     
     print("\n🛑 Limpiando...")
+    
+    # Señalar a todos los hilos que deben parar
+    stop_event.set()
+    
     try:
         if driver:
             driver.quit()
@@ -328,9 +335,12 @@ def signal_handler(sig, frame):
 # Función para guardar WAVs cada 15 segundos
 def guardar_wav_cada_15_segundos(pulse_device):
     """Guarda un archivo WAV cada 15 segundos con timestamp único."""
+    carpeta = "records"
+    os.makedirs(carpeta, exist_ok=True)
+    
     def grabar_continuamente():
         contador = 1
-        while True:
+        while not stop_event.is_set():
             try:
                 # Crear nombre de archivo con timestamp
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -338,7 +348,7 @@ def guardar_wav_cada_15_segundos(pulse_device):
                 
                 log(f"🎵 Iniciando grabación: {output_file}", "INFO")
                 
-                # Comando ffmpeg para grabar exactamente 15 segundos
+                # Comando ffmpeg para grabar exactamente 15 segundos y guardarlo en records
                 cmd = [
                     "ffmpeg",
                     "-y",  # Sobrescribir archivo si existe
@@ -348,7 +358,7 @@ def guardar_wav_cada_15_segundos(pulse_device):
                     "-acodec", "pcm_s16le",
                     "-ar", str(SAMPLE_RATE),
                     "-ac", str(CHANNELS),
-                    output_file
+                    os.path.join(carpeta, output_file)
                 ]
                 
                 # Ejecutar ffmpeg y esperar a que termine
@@ -363,7 +373,8 @@ def guardar_wav_cada_15_segundos(pulse_device):
                 
             except Exception as e:
                 log(f"Error grabando WAV: {e}", "ERROR")
-                time.sleep(5)  # Esperar antes de reintentar
+                if not stop_event.is_set():
+                    time.sleep(5)  # Esperar antes de reintentar solo si no se debe parar
     
     # Iniciar hilo de grabación
     recording_thread = threading.Thread(target=grabar_continuamente, daemon=True)
@@ -371,8 +382,15 @@ def guardar_wav_cada_15_segundos(pulse_device):
     log("🎙️ Sistema de grabación WAV iniciado (cada 15 segundos)", "SUCCESS")
     return recording_thread
 
+def monitor_youtube_activity(driver):
+    """Hilo que mantiene YouTube activo continuamente."""
+    while not stop_event.is_set():
+        time.sleep(15)  # Cada 15 segundos
+        YouTubeJSUtils.keep_youtube_active(driver)
+
+
 def main():
-    global parec_proc, module_id, pulse_device
+    global parec_proc, module_id, pulse_device, stop_event
 
     """if len(sys.argv) != 3:
         print(f"Uso: {sys.argv[0]} <URL> <host:puerto>")
@@ -380,6 +398,9 @@ def main():
     """
     url = sys.argv[1]
     #destination = sys.argv[2]
+
+    # Inicializar el evento de parada
+    stop_event.clear()
 
     sink_name, module_id = create_null_sink()
     time.sleep(2)  # esperar inicialización sink
@@ -393,6 +414,11 @@ def main():
     if driver:
         log("Iniciando monitoreo de JavaScript...", "INFO")
         monitor_javascript_health(driver, interval=15)  # Verificar cada 15 segundos
+        
+        # Iniciar monitoreo de actividad de YouTube
+        log("Iniciando monitoreo de actividad de YouTube...", "INFO")
+        monitor_thread = threading.Thread(target=monitor_youtube_activity, args=(driver,), daemon=True)
+        monitor_thread.start()
 
     # Verificar que el audio se está capturando correctamente
     if verify_audio_capture(sink_name):
