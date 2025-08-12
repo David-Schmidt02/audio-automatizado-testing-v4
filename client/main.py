@@ -202,6 +202,7 @@ def verificar_estado_javascript(driver):
         return YouTubeJSUtils.is_video_playing(driver)
     if state.get('videoReadyState', 0) < 3:
         log("Video no listo para reproducir", "WARN")
+        force_youtube_audio_refresh(driver)
         return False
     return True
 # 3 - Monitoreo del estado de JavaScript
