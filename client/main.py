@@ -196,13 +196,13 @@ def main():
     """Función principal siguiendo exactamente el patrón del script Go."""
     
     # 1. Validar argumentos de línea de comandos
-    if len(sys.argv) != 2:
+    """if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <URL>")
         print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live'")
         sys.exit(1)
     
-    url = sys.argv[1]
-    
+    url = sys.argv[1]"""
+    url = "https://www.youtube.com/@todonoticias/live"
     # Configurar señales para cleanup
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
