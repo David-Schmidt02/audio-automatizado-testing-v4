@@ -4,6 +4,7 @@ import sys
 import subprocess
 import time
 import re
+import shutil
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger_client import log
@@ -96,18 +97,109 @@ def open_firefox_and_get_pid(firefox_options, service):
 
     return driver, pid
 
+def debug_audio_streams():
+    """Función de debug para mostrar todos los streams de audio activos."""
+    try:
+        result = subprocess.run(["pactl", "list", "sink-inputs"], 
+                              capture_output=True, text=True, check=True)
+        
+        log("=== DEBUG: Streams de audio activos ===", "DEBUG")
+        log(result.stdout, "DEBUG")
+        log("=== Fin DEBUG ===", "DEBUG")
+        
+        # También mostrar la versión corta
+        short_result = subprocess.run(["pactl", "list", "short", "sink-inputs"], 
+                                    capture_output=True, text=True, check=True)
+        log("=== Streams cortos ===", "DEBUG")
+        log(short_result.stdout, "DEBUG")
+        
+    except Exception as e:
+        log(f"Error en debug de streams: {e}", "ERROR")
+
+def find_firefox_streams_alternative(pid):
+    """Método alternativo para encontrar streams de Firefox usando múltiples enfoques."""
+    firefox_streams = []
+    
+    try:
+        # Método 1: Buscar por PID en la información detallada
+        result = subprocess.run(["pactl", "list", "sink-inputs"], 
+                              capture_output=True, text=True, check=True)
+        
+        output = result.stdout
+        
+        # Buscar todos los Sink Input #
+        import re
+        stream_blocks = re.split(r'Sink Input #(\d+)', output)
+        
+        for i in range(1, len(stream_blocks), 2):
+            stream_id = stream_blocks[i]
+            stream_info = stream_blocks[i + 1]
+            
+            # Buscar el PID en múltiples formatos
+            pid_patterns = [
+                f'application.process.id = "{pid}"',
+                f'application.process.id = {pid}',
+                f'application.process.id="{pid}"',
+                f'application.process.id={pid}'
+            ]
+            
+            for pattern in pid_patterns:
+                if pattern in stream_info:
+                    log(f"Stream {stream_id} encontrado para PID {pid} (método PID)", "DEBUG")
+                    firefox_streams.append(stream_id)
+                    break
+        
+        # Método 2: Buscar por nombre de aplicación "Firefox"
+        firefox_patterns = [
+            'application.name = "Firefox"',
+            'application.name = Firefox',
+            'media.name = "Firefox"'
+        ]
+        
+        for i in range(1, len(stream_blocks), 2):
+            stream_id = stream_blocks[i]
+            stream_info = stream_blocks[i + 1]
+            
+            if stream_id not in firefox_streams:  # No duplicar
+                for pattern in firefox_patterns:
+                    if pattern in stream_info:
+                        log(f"Stream {stream_id} encontrado por nombre Firefox", "DEBUG")
+                        firefox_streams.append(stream_id)
+                        break
+        
+        return list(set(firefox_streams))  # Eliminar duplicados
+        
+    except Exception as e:
+        log(f"Error en búsqueda alternativa de streams: {e}", "ERROR")
+        return []
+
 def move_firefox_audio_to_sink(pid, sink_name):
     """Mueve el audio del proceso de Firefox a un sink específico."""
-    if pid is None:
-        log("PID no disponible, no se puede mover el audio", "ERROR")
+    log(f"Intentando mover audio del PID {pid} al sink {sink_name}", "INFO")
+    
+    # Primero intentar método alternativo más robusto
+    firefox_streams = find_firefox_streams_alternative(pid)
+    
+    if not firefox_streams:
+        log(f"No se encontraron streams para PID {pid} con método alternativo", "WARN")
         return False
-    try:
-        # Aquí usas pactl para mover el stream al sink
-        subprocess.run(["pactl", "move-sink-input", str(pid), sink_name], check=True)
-        log(f"Audio del PID {pid} movido a sink '{sink_name}'", "SUCCESS")
+    
+    moved_count = 0
+    for stream_id in firefox_streams:
+        try:
+            log(f"Intentando mover stream {stream_id}...", "DEBUG")
+            subprocess.run(["pactl", "move-sink-input", stream_id, sink_name], check=True)
+            log(f"✅ Stream {stream_id} movido exitosamente a '{sink_name}'", "SUCCESS")
+            moved_count += 1
+        except subprocess.CalledProcessError as e:
+            log(f"❌ Error moviendo stream {stream_id}: {e}", "ERROR")
+            continue
+    
+    if moved_count > 0:
+        log(f"🎵 Total streams movidos: {moved_count}/{len(firefox_streams)}", "SUCCESS")
         return True
-    except Exception as e:
-        log(f"Error moviendo audio al sink: {e}", "ERROR")
+    else:
+        log("❌ No se pudo mover ningún stream", "ERROR")
         return False
 
 def load_video_and_configure(driver, video_url):
@@ -116,12 +208,23 @@ def load_video_and_configure(driver, video_url):
     driver.get(video_url)
 
     skip_ads(driver, timeout=60) # Se saltan las publicidades, si las hubiera
+    
+    # Esperar un poco para que el video inicie
+    log("Esperando que el video inicie reproducción...", "INFO")
+    time.sleep(5)
+    
     try:
         script_js = obtener_path_js('live_stream_video.js')
         driver.execute_script(script_js)
         log("JavaScript de configuración ejecutado", "SUCCESS")
     except Exception as e:
         log(f"Error ejecutando JavaScript: {e}", "ERROR")
+
+    # Esperar un poco más para que se genere audio
+    time.sleep(3)
+    
+    # Debug: mostrar streams disponibles
+    debug_audio_streams()
 
     return driver
 

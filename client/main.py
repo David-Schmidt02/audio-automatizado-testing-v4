@@ -170,7 +170,9 @@ def launch_firefox(url, sink_name):
 
     if firefox_pid:
         # Mover audio de Firefox al sink
+        time.sleep(2)
         move_firefox_audio_to_sink(firefox_pid, sink_name) # 2.4 Movemos el stream de esta instancia de firefox al sink creado
+        time.sleep(2) 
         # Cargar URL y configurar JS
         load_video_and_configure(driver, url) # 2.5 Cargar la URL y configurar el JavaScript
     else:
@@ -317,6 +319,21 @@ def signal_handler(sig, frame):
     cleanup()
     sys.exit(0)
 
+# funcion temporal
+def guardar_wav(pulse_device, output_file):
+    segundos = 15
+    """Guarda el audio capturado en un archivo WAV."""
+    cmd = [
+        "ffmpeg",
+        "-f", "pulse",
+        "-i", pulse_device,
+        "-acodec", "pcm_s16le",
+        "-ar", str(SAMPLE_RATE),
+        "-ac", str(CHANNELS),
+        output_file
+    ]
+    subprocess.Popen(cmd)
+
 def main():
     global parec_proc, module_id, pulse_device
 
@@ -346,7 +363,8 @@ def main():
     else:
         log("Advertencia: No se pudo verificar la captura de audio", "WARN")
     
-    parec_proc = start_parec_and_stream(destination, pulse_device)
+    guardar_wav(pulse_device, "output.wav")
+    #parec_proc = start_parec_and_stream(destination, pulse_device)
 
     # Esperar señales
     signal.pause()
