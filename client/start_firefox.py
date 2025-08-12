@@ -9,12 +9,27 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logger_client import log
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+from selenium.    if moved_count > 0:
+        log(f"🎉 Éxito: {moved_count}/{len(firefox_streams)} streams movidos correctamente", "SUCCESS")
+        
+        # Verificar que el sink esté realmente recibiendo audio
+        time.sleep(2)  # Esperar un poco para que se establezca la conexión
+        if verify_sink_has_audio(sink_name):
+            log(f"🔊 Confirmado: Sink '{sink_name}' está recibiendo audio", "SUCCESS")
+        else:
+            log(f"⚠️ Advertencia: No se puede confirmar audio en sink '{sink_name}'", "WARN")
+        
+        return True
+    else:
+        log("❌ No se pudo mover ningún stream", "ERROR")
+        return Falsever.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
@@ -173,21 +188,73 @@ def find_firefox_streams_alternative(pid):
         log(f"Error en búsqueda alternativa de streams: {e}", "ERROR")
         return []
 
+def verify_sink_has_audio(sink_name, timeout=10):
+    """Verifica que el sink esté recibiendo audio después de mover los streams."""
+    log(f"Verificando que el sink '{sink_name}' esté recibiendo audio...", "INFO")
+    
+    try:
+        # Verificar que hay sink-inputs conectados a nuestro sink
+        result = subprocess.run(["pactl", "list", "short", "sink-inputs"], 
+                              capture_output=True, text=True, check=True)
+        
+        sink_inputs = result.stdout.strip().split('\n')
+        streams_in_sink = 0
+        
+        for line in sink_inputs:
+            if line.strip() and sink_name in line:
+                streams_in_sink += 1
+                log(f"✅ Stream encontrado en sink '{sink_name}': {line.strip()}", "DEBUG")
+        
+        if streams_in_sink > 0:
+            log(f"✅ Sink '{sink_name}' tiene {streams_in_sink} streams activos", "SUCCESS")
+            return True
+        else:
+            log(f"⚠️ Sink '{sink_name}' no tiene streams activos", "WARN")
+            return False
+            
+    except Exception as e:
+        log(f"Error verificando sink: {e}", "ERROR")
+        return False
+
+def wait_for_firefox_audio(pid, max_wait_time=30, check_interval=2):
+    """Espera hasta que Firefox genere streams de audio activos."""
+    log(f"Esperando que Firefox (PID {pid}) genere streams de audio...", "INFO")
+    
+    start_time = time.time()
+    while time.time() - start_time < max_wait_time:
+        streams = find_firefox_streams_alternative(pid)
+        
+        if streams:
+            log(f"✅ Streams de Firefox encontrados: {streams}", "SUCCESS")
+            return streams
+        
+        log(f"⏳ Esperando streams... ({int(time.time() - start_time)}s/{max_wait_time}s)", "DEBUG")
+        time.sleep(check_interval)
+    
+    log(f"⚠️ Timeout: No se encontraron streams después de {max_wait_time}s", "WARN")
+    return []
+
 def move_firefox_audio_to_sink(pid, sink_name):
     """Mueve el audio del proceso de Firefox a un sink específico."""
-    log(f"Intentando mover audio del PID {pid} al sink {sink_name}", "INFO")
+    log(f"Iniciando proceso de mover audio del PID {pid} al sink {sink_name}", "INFO")
     
-    # Primero intentar método alternativo más robusto
-    firefox_streams = find_firefox_streams_alternative(pid)
+    # Esperar hasta que Firefox genere streams de audio
+    firefox_streams = wait_for_firefox_audio(pid, max_wait_time=45, check_interval=3)
     
     if not firefox_streams:
-        log(f"No se encontraron streams para PID {pid} con método alternativo", "WARN")
+        log(f"❌ No se generaron streams de audio para Firefox PID {pid}", "ERROR")
+        log("Esto puede indicar que:", "INFO")
+        log("  • El video no se está reproduciendo", "INFO")
+        log("  • El audio está bloqueado en el navegador", "INFO")
+        log("  • Hay problemas con la configuración de PulseAudio", "INFO")
         return False
     
+    log(f"🎵 Intentando mover {len(firefox_streams)} streams al sink", "INFO")
     moved_count = 0
+    
     for stream_id in firefox_streams:
         try:
-            log(f"Intentando mover stream {stream_id}...", "DEBUG")
+            log(f"Moviendo stream {stream_id}...", "DEBUG")
             subprocess.run(["pactl", "move-sink-input", stream_id, sink_name], check=True)
             log(f"✅ Stream {stream_id} movido exitosamente a '{sink_name}'", "SUCCESS")
             moved_count += 1
@@ -196,11 +263,77 @@ def move_firefox_audio_to_sink(pid, sink_name):
             continue
     
     if moved_count > 0:
-        log(f"🎵 Total streams movidos: {moved_count}/{len(firefox_streams)}", "SUCCESS")
+        log(f"� Éxito: {moved_count}/{len(firefox_streams)} streams movidos correctamente", "SUCCESS")
         return True
     else:
         log("❌ No se pudo mover ningún stream", "ERROR")
         return False
+
+def ensure_video_is_playing(driver, max_attempts=5):
+    """Asegura que el video esté reproduciendo y genere audio."""
+    log("Verificando que el video esté reproduciendo...", "INFO")
+    
+    for attempt in range(max_attempts):
+        try:
+            video_state = driver.execute_script("""
+                var video = document.querySelector('video');
+                if (!video) return {error: 'No video found'};
+                
+                return {
+                    exists: true,
+                    paused: video.paused,
+                    ended: video.ended,
+                    muted: video.muted,
+                    volume: video.volume,
+                    currentTime: video.currentTime,
+                    duration: video.duration,
+                    readyState: video.readyState,
+                    networkState: video.networkState
+                };
+            """)
+            
+            if 'error' in video_state:
+                log(f"❌ Intento {attempt + 1}: No se encontró elemento video", "WARN")
+                time.sleep(3)
+                continue
+            
+            # Verificar si el video está pausado
+            if video_state.get('paused', True):
+                log(f"⏸️ Intento {attempt + 1}: Video pausado, intentando reproducir...", "WARN")
+                driver.execute_script("""
+                    var video = document.querySelector('video');
+                    if (video) {
+                        video.muted = false;
+                        video.volume = 1.0;
+                        video.play().catch(e => console.log('Error playing:', e));
+                    }
+                """)
+                time.sleep(3)
+                continue
+            
+            # Verificar si el video está silenciado
+            if video_state.get('muted', True):
+                log(f"🔇 Intento {attempt + 1}: Video silenciado, activando audio...", "WARN")
+                driver.execute_script("""
+                    var video = document.querySelector('video');
+                    if (video) {
+                        video.muted = false;
+                        video.volume = 1.0;
+                    }
+                """)
+                time.sleep(2)
+                continue
+            
+            # Si llegamos aquí, el video debería estar reproduciendo con audio
+            log(f"✅ Video reproduciéndose: volume={video_state.get('volume')}, currentTime={video_state.get('currentTime')}", "SUCCESS")
+            return True
+            
+        except Exception as e:
+            log(f"Error verificando estado del video: {e}", "ERROR")
+            time.sleep(2)
+    
+    log("❌ No se pudo asegurar que el video esté reproduciendo correctamente", "ERROR")
+    return False
 
 def load_video_and_configure(driver, video_url):
     """Navega a la URL, salta anuncios y ejecuta configuración JS."""
@@ -209,8 +342,8 @@ def load_video_and_configure(driver, video_url):
 
     skip_ads(driver, timeout=60) # Se saltan las publicidades, si las hubiera
     
-    # Esperar un poco para que el video inicie
-    log("Esperando que el video inicie reproducción...", "INFO")
+    # Esperar un poco para que la página cargue completamente
+    log("Esperando carga inicial de la página...", "INFO")
     time.sleep(5)
     
     try:
@@ -220,11 +353,21 @@ def load_video_and_configure(driver, video_url):
     except Exception as e:
         log(f"Error ejecutando JavaScript: {e}", "ERROR")
 
-    # Esperar un poco más para que se genere audio
-    time.sleep(3)
-    
-    # Debug: mostrar streams disponibles
-    debug_audio_streams()
+    # Asegurar que el video esté reproduciendo con audio
+    log("Verificando reproducción de video con audio...", "INFO")
+    if ensure_video_is_playing(driver):
+        log("✅ Video configurado y reproduciendo con audio", "SUCCESS")
+        
+        # Esperar un poco más para que se genere audio consistente
+        log("Esperando generación de streams de audio...", "INFO")
+        time.sleep(8)
+        
+        # Debug: mostrar streams disponibles
+        debug_audio_streams()
+    else:
+        log("⚠️ Advertencia: No se pudo confirmar reproducción con audio", "WARN")
+        # Aún así mostrar debug para diagnóstico
+        debug_audio_streams()
 
     return driver
 

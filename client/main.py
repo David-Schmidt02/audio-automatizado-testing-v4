@@ -10,7 +10,8 @@ import struct
 import shutil
 import psutil
 from pathlib import Path
-from start_firefox import clean_and_create_selenium_profile, configuracion_firefox, open_firefox_and_get_pid, move_firefox_audio_to_sink, load_video_and_configure
+from start_firefox_new import clean_and_create_selenium_profile, configuracion_firefox, open_firefox_and_play_video
+from youtube_js_utils import YouTubeJSUtils
 from youtube_js_utils import YouTubeJSUtils, get_youtube_player_state, activate_youtube_video, force_youtube_audio_refresh
 # Importaciones para Selenium
 from selenium.webdriver.firefox.options import Options
@@ -157,26 +158,26 @@ def launch_firefox(url, sink_name):
     global profile_dir
     global driver
     global service
-    global firefox_pid
-
-    profile_dir = clean_and_create_selenium_profile(identificador) # 2.1 Se crea un perfil temporal para Firefox con un identificador único que puede utilizar selenium
-    # Configuración de Firefox
+    
+    log("🚀 Iniciando proceso completo de Firefox + YouTube + Audio", "INFO")
+    
+    # 1. Crear perfil de Firefox
+    profile_dir = clean_and_create_selenium_profile(identificador)
+    
+    # 2. Configurar opciones de Firefox
     firefox_options = Options()
-    firefox_options = configuracion_firefox(firefox_options) # 2.2 Configuraciones adicionales para el perfil de firefox
+    firefox_options = configuracion_firefox(firefox_options)
     profile = FirefoxProfile(profile_directory=profile_dir)
     firefox_options.profile = profile
-    # Iniciar el navegador
-    driver, firefox_pid = open_firefox_and_get_pid(firefox_options, service) # 2.3 Inicia Firefox y retorna su PID
-
-    if firefox_pid:
-        # Mover audio de Firefox al sink
-        time.sleep(2)
-        move_firefox_audio_to_sink(firefox_pid, sink_name) # 2.4 Movemos el stream de esta instancia de firefox al sink creado
-        time.sleep(2) 
-        # Cargar URL y configurar JS
-        load_video_and_configure(driver, url) # 2.5 Cargar la URL y configurar el JavaScript
-    else:
-        log("No se pudo iniciar Firefox correctamente", "ERROR")
+    
+    # 3. Iniciar Firefox, configurar YouTube y mover audio - TODO EN UNO
+    driver = open_firefox_and_play_video(firefox_options, url, sink_name, service)
+    
+    log(f"🦊 Perfil temporal: {profile_dir}", "INFO")
+    log("✅ Proceso completo de Firefox terminado", "SUCCESS")
+    
+    # Retornar None como PID ya que todo el manejo está encapsulado
+    return None
 
 #-----------------------------------------------------------------------------------------------------------------#
 
@@ -207,19 +208,24 @@ def verificar_estado_javascript(driver):
         force_youtube_audio_refresh(driver)
         return False
     return True
-# 3 - Monitoreo del estado de JavaScript
+# 3 - Monitoreo del estado de JavaScript usando YouTubeJSUtils
 def monitor_javascript_health(driver, interval=30):
+    """Monitorea la salud del JavaScript periódicamente usando YouTubeJSUtils."""
     if not driver:
         return
 
     def check_js_health():
         while True:
             try:
-                if verificar_estado_javascript(driver):
+                # Usar YouTubeJSUtils para verificación
+                state = YouTubeJSUtils.get_player_state(driver)
+                if state and state.get('hasVideo') and not state.get('videoPaused'):
                     log("JavaScript health check: OK", "DEBUG")
                 else:
                     log("JavaScript health check: PROBLEMA DETECTADO", "WARN")
-                    # Aquí podrías usar force_youtube_audio_refresh(driver) o estrategias similares
+                    # Reactivar usando YouTubeJSUtils
+                    YouTubeJSUtils.play_video(driver)
+                    YouTubeJSUtils.configure_audio(driver, muted=False, volume=1.0)
 
             except Exception as e:
                 log(f"Error en health check: {e}", "ERROR")

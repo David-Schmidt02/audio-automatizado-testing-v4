@@ -6,6 +6,7 @@ Contiene funciones para verificar estado, reactivar video, detectar errores, etc
 import time
 import sys
 import os
+import subprocess
 import importlib.util
 
 # Agregar el directorio padre al path para importar logger_client
@@ -15,8 +16,6 @@ from logger_client import log
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from start_firefox import skip_ads
 
 class YouTubeJSUtils:
     """Clase que contiene todas las utilidades JavaScript para YouTube."""
@@ -202,6 +201,207 @@ class YouTubeJSUtils:
                 });
             }
         """)
+
+    @staticmethod
+    def skip_ads(driver, timeout=60):
+        """Salta anuncios de YouTube si aparecen."""
+        log("Intentando saltar anuncios (si aparecen)...", "INFO")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                # Intentar varios selectores para botones de saltar anuncio
+                skip_selectors = [
+                    ".ytp-ad-skip-button",
+                    ".ytp-skip-ad-button", 
+                    "[aria-label*='Skip']",
+                    "[aria-label*='Omitir']",
+                    ".skip-button",
+                    "#skip-button"
+                ]
+                
+                for selector in skip_selectors:
+                    try:
+                        skip_button = WebDriverWait(driver, 2).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                        )
+                        log("Botón 'Saltar anuncio' encontrado. Haciendo clic...", "SUCCESS")
+                        skip_button.click()
+                        time.sleep(2)
+                        break
+                    except:
+                        continue
+                else:
+                    # Si no encontró ningún botón, salir del bucle principal
+                    break
+                    
+            except:
+                break
+        log("Proceso de saltar anuncios finalizado", "SUCCESS")
+
+    @staticmethod
+    def ensure_video_is_playing(driver, max_attempts=5):
+        """Asegura que el video esté reproduciendo y genere audio."""
+        log("Verificando que el video esté reproduciendo...", "INFO")
+        
+        for attempt in range(max_attempts):
+            try:
+                video_state = driver.execute_script("""
+                    var video = document.querySelector('video');
+                    if (!video) return {error: 'No video found'};
+                    
+                    return {
+                        exists: true,
+                        paused: video.paused,
+                        ended: video.ended,
+                        muted: video.muted,
+                        volume: video.volume,
+                        currentTime: video.currentTime,
+                        duration: video.duration,
+                        readyState: video.readyState,
+                        networkState: video.networkState
+                    };
+                """)
+                
+                if 'error' in video_state:
+                    log(f"❌ Intento {attempt + 1}: No se encontró elemento video", "WARN")
+                    time.sleep(3)
+                    continue
+                
+                # Verificar si el video está pausado
+                if video_state.get('paused', True):
+                    log(f"⏸️ Intento {attempt + 1}: Video pausado, intentando reproducir...", "WARN")
+                    driver.execute_script("""
+                        var video = document.querySelector('video');
+                        if (video) {
+                            video.muted = false;
+                            video.volume = 1.0;
+                            video.play().catch(e => console.log('Error playing:', e));
+                        }
+                    """)
+                    time.sleep(3)
+                    continue
+                
+                # Verificar si el video está silenciado
+                if video_state.get('muted', True):
+                    log(f"🔇 Intento {attempt + 1}: Video silenciado, activando audio...", "WARN")
+                    driver.execute_script("""
+                        var video = document.querySelector('video');
+                        if (video) {
+                            video.muted = false;
+                            video.volume = 1.0;
+                        }
+                    """)
+                    time.sleep(2)
+                    continue
+                
+                # Si llegamos aquí, el video debería estar reproduciendo con audio
+                log(f"✅ Video reproduciéndose: volume={video_state.get('volume')}, currentTime={video_state.get('currentTime')}", "SUCCESS")
+                return True
+                
+            except Exception as e:
+                log(f"Error verificando estado del video: {e}", "ERROR")
+                time.sleep(2)
+        
+        log("❌ No se pudo asegurar que el video esté reproduciendo correctamente", "ERROR")
+        return False
+
+    @staticmethod
+    def load_and_execute_live_stream_js(driver):
+        """Carga y ejecuta el script de live stream."""
+        try:
+            js_path = os.path.join(os.path.dirname(__file__), 'live_stream_video.js')
+            with open(js_path, 'r', encoding='utf-8') as js_file:
+                script_js = js_file.read()
+            
+            log(f"JavaScript cargado: {len(script_js)} caracteres", "DEBUG")
+            
+            # Ejecutar el script y verificar si se ejecutó correctamente
+            result = driver.execute_script(script_js)
+            log("Script JavaScript ejecutado exitosamente", "SUCCESS")
+            
+            # Verificar que el video existe y está configurado
+            video_check = driver.execute_script("""
+                var video = document.querySelector('video');
+                if (video) {
+                    return {
+                        found: true,
+                        muted: video.muted,
+                        volume: video.volume,
+                        paused: video.paused,
+                        duration: video.duration,
+                        currentTime: video.currentTime
+                    };
+                }
+                return {found: false};
+            """)
+            
+            if video_check and video_check.get('found'):
+                log(f"Video encontrado y configurado: muted={video_check.get('muted')}, volume={video_check.get('volume')}, paused={video_check.get('paused')}", "SUCCESS")
+                return True
+            else:
+                log("Advertencia: No se encontró elemento video en la página", "WARN")
+                return False
+                
+        except Exception as e:
+            log(f"Error ejecutando JavaScript: {e}", "ERROR")
+            return False
+
+    @staticmethod  
+    def debug_audio_streams():
+        """Función de debug para mostrar todos los streams de audio activos."""
+        try:
+            result = subprocess.run(["pactl", "list", "sink-inputs"], 
+                                  capture_output=True, text=True, check=True)
+            
+            log("=== DEBUG: Streams de audio activos ===", "DEBUG")
+            log(result.stdout, "DEBUG")
+            log("=== Fin DEBUG ===", "DEBUG")
+            
+            # También mostrar la versión corta
+            short_result = subprocess.run(["pactl", "list", "short", "sink-inputs"], 
+                                        capture_output=True, text=True, check=True)
+            log("=== Streams cortos ===", "DEBUG")
+            log(short_result.stdout, "DEBUG")
+            
+        except Exception as e:
+            log(f"Error en debug de streams: {e}", "ERROR")
+
+    @staticmethod
+    def complete_youtube_setup(driver, video_url):
+        """Método completo para configurar YouTube con todas las verificaciones."""
+        log(f"Iniciando configuración completa de YouTube para: {video_url}", "INFO")
+        
+        # 1. Navegar a la URL
+        log(f"Navegando a: {video_url}", "INFO")
+        driver.get(video_url)
+        
+        # 2. Saltar anuncios
+        YouTubeJSUtils.skip_ads(driver, timeout=60)
+        
+        # 3. Esperar carga inicial
+        log("Esperando carga inicial de la página...", "INFO")
+        time.sleep(5)
+        
+        # 4. Ejecutar JavaScript de configuración
+        if not YouTubeJSUtils.load_and_execute_live_stream_js(driver):
+            log("Fallo en la carga de JavaScript, continuando...", "WARN")
+        
+        # 5. Asegurar que el video esté reproduciendo
+        log("Verificando reproducción de video con audio...", "INFO")
+        if YouTubeJSUtils.ensure_video_is_playing(driver):
+            log("✅ Video configurado y reproduciendo con audio", "SUCCESS")
+            
+            # 6. Esperar generación de streams de audio
+            log("Esperando generación de streams de audio...", "INFO")
+            time.sleep(8)
+            
+            # 7. Debug de streams
+            YouTubeJSUtils.debug_audio_streams()
+            return True
+        else:
+            log("⚠️ Advertencia: No se pudo confirmar reproducción con audio", "WARN")
+            YouTubeJSUtils.debug_audio_streams()
+            return False
 
 
 def get_youtube_player_state(driver):
