@@ -186,10 +186,12 @@ def verificar_estado_javascript(driver):
         return False
     if state.get('videoError'):
         log(f"Error en video: {state['videoError']}", "ERROR")
+        force_youtube_audio_refresh(driver)
         # Lógica para manejar error de video
         return False
     if state.get('videoEnded'):
         log("Video terminado", "WARN")
+        force_youtube_audio_refresh(driver)
         # Lógica para manejar video terminado
         return False
     if state.get('videoPaused'):
@@ -335,8 +337,8 @@ def main():
     # Iniciar monitoreo de JavaScript
     if driver:
         log("Iniciando monitoreo de JavaScript...", "INFO")
-        monitor_javascript_health(driver, interval=60)  # Verificar cada minuto
-    
+        monitor_javascript_health(driver, interval=15)  # Verificar cada 15 segundos
+
     # Verificar que el audio se está capturando correctamente
     if verify_audio_capture(sink_name):
         log("Audio capture verificado correctamente", "SUCCESS")

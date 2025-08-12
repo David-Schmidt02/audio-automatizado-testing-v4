@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from start_firefox import skip_ads
 
 class YouTubeJSUtils:
     """Clase que contiene todas las utilidades JavaScript para YouTube."""
@@ -283,26 +284,13 @@ def force_youtube_audio_refresh(driver):
         if youtube_state.get('hasEndScreen'):
             log("Video terminó, recargar página...", "WARN")
             driver.refresh()
-            import time
             time.sleep(1.5)
-            
-            # Importar skip_ads si es necesario
-            try:
-                # Importación relativa dentro del mismo directorio src
-                import importlib.util
-                spec = importlib.util.spec_from_file_location("start_firefox", 
-                    os.path.join(os.path.dirname(__file__), "start_firefox.py"))
-                start_firefox_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(start_firefox_module)
-                start_firefox_module.skip_ads(driver, timeout=30)
-            except Exception as e:
-                log(f"No se pudo importar o ejecutar skip_ads: {e}", "WARN")
+            skip_ads(driver, timeout=30)
         
         # Pausar y reproducir
         YouTubeJSUtils.pause_and_play(driver, pause_delay=500)
-        import time
         time.sleep(0.5)
-        
+
         # Configurar audio
         YouTubeJSUtils.configure_audio(driver, muted=False, volume=1.0)
         
