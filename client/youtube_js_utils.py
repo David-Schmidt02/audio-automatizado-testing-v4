@@ -403,6 +403,85 @@ class YouTubeJSUtils:
             YouTubeJSUtils.debug_audio_streams()
             return False
 
+    @staticmethod
+    def keep_youtube_active(driver):
+        """
+        Mantiene YouTube activo con estrategias optimizadas.
+        
+        Args:
+            driver: Instancia del driver de Selenium
+            
+        Returns:
+            bool: True si se mantiene activo exitosamente
+        """
+        try:
+            log("Manteniendo YouTube activo...", "DEBUG")
+            
+            # Verificar estado usando método existente de la clase
+            state = YouTubeJSUtils.get_player_state(driver)
+            if not state or not state.get('hasVideo'):
+                log("No hay video cargado", "WARN")
+                return False
+            
+            is_playing = not state.get('videoPaused', True)
+            
+            if not is_playing:
+                log("Video pausado, reactivando...", "WARN")
+                
+                # Método múltiple simultáneo usando métodos de la clase
+                # 1. Usar método existente play_video
+                YouTubeJSUtils.play_video(driver)
+                
+                # 2. Click directo en video
+                try:
+                    video_element = driver.find_element(By.TAG_NAME, "video")
+                    driver.execute_script("arguments[0].click();", video_element)
+                except:
+                    pass
+                
+                # 3. Botón play si existe
+                try:
+                    play_button = driver.find_element(By.CSS_SELECTOR, ".ytp-play-button")
+                    play_button.click()
+                except:
+                    pass
+            
+            # Actividad de mouse moderada
+            driver.execute_script("""
+                // Un solo evento de mouse aleatorio
+                var event = new MouseEvent('mousemove', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: Math.random() * window.innerWidth,
+                    clientY: Math.random() * window.innerHeight
+                });
+                document.dispatchEvent(event);
+                
+                // Hover ligero en el video
+                var video = document.querySelector('video');
+                if (video) {
+                    var hoverEvent = new MouseEvent('mouseenter', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    video.dispatchEvent(hoverEvent);
+                }
+            """)
+            
+            # Mantener focus
+            driver.execute_script("window.focus();")
+            
+            # Usar método existente de configuración de audio
+            YouTubeJSUtils.configure_audio(driver, muted=False, volume=1.0)
+            
+            return True
+            
+        except Exception as e:
+            log(f"Error en actividad: {e}", "DEBUG")
+            return False
+        
 
 def get_youtube_player_state(driver):
     """Función wrapper para obtener estado del reproductor."""
@@ -485,7 +564,7 @@ def force_youtube_audio_refresh(driver):
             log("Video terminó, recargar página...", "WARN")
             driver.refresh()
             time.sleep(1.5)
-            skip_ads(driver, timeout=30)
+            YouTubeJSUtils.skip_ads(driver, timeout=30)
         
         # Pausar y reproducir
         YouTubeJSUtils.pause_and_play(driver, pause_delay=500)
