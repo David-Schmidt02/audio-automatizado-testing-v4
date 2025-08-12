@@ -34,6 +34,10 @@ class RecordingManager:
         self.streaming_thread = None
         self.parec_process = None
         
+        # Referencias para monitoreo de audio
+        self.pulse_manager = None
+        self.firefox_pid = None
+        
         # Configuración de audio
         self.sample_rate = 48000
         self.channels = 1
@@ -49,6 +53,18 @@ class RecordingManager:
         """Establece el dispositivo PulseAudio a usar."""
         self.pulse_device = pulse_device
         log(f"Dispositivo PulseAudio configurado: {pulse_device}", "INFO")
+        
+    def set_monitoring_references(self, pulse_manager, firefox_pid):
+        """
+        Establece referencias para monitoreo de conectividad de audio.
+        
+        Args:
+            pulse_manager: Instancia de PulseAudioManager
+            firefox_pid: PID del proceso Firefox
+        """
+        self.pulse_manager = pulse_manager
+        self.firefox_pid = firefox_pid
+        log(f"Referencias de monitoreo configuradas: PID {firefox_pid}", "DEBUG")
     
     def start_wav_recording(self, interval=15, output_dir="records"):
         """
@@ -79,6 +95,13 @@ class RecordingManager:
             
             while not self.stop_event.is_set():
                 try:
+                    # VERIFICAR CONECTIVIDAD DE AUDIO ANTES DE GRABAR
+                    if self.pulse_manager and self.firefox_pid:
+                        log("🔍 Verificando conectividad de streams antes de grabar...", "DEBUG")
+                        if not self.pulse_manager.reconnect_streams_if_needed(self.firefox_pid):
+                            log("⚠️ Advertencia: Problemas con conectividad de audio", "WARN")
+                            # Continuar anyway, puede que haya audio de otra fuente
+                    
                     # Crear nombre de archivo con timestamp
                     timestamp = time.strftime("%Y%m%d_%H%M%S")
                     output_file = f"audio_chunk_{timestamp}_{contador:03d}.wav"

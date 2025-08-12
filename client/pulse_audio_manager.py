@@ -411,6 +411,130 @@ class PulseAudioManager:
             'sink_index': self.sink_index
         }
     
+    def verify_audio_flowing(self, sink_name, test_duration=3):
+        """
+        Verifica si hay datos de audio fluyendo en el sink.
+        
+        Args:
+            sink_name: Nombre del sink a verificar
+            test_duration: Duración en segundos para probar el flujo
+            
+        Returns:
+            bool: True si hay audio fluyendo
+        """
+        try:
+            log(f"🔊 Verificando flujo de audio en sink '{sink_name}' por {test_duration}s...", "DEBUG")
+            
+            # Usar pactl para obtener estadísticas del sink monitor
+            monitor_device = f"{sink_name}.monitor"
+            
+            # Capturar una pequeña muestra de audio para verificar si hay flujo
+            test_cmd = [
+                "timeout", str(test_duration),
+                "parecord", 
+                "--device", monitor_device,
+                "--format=s16le",
+                "--rate=48000",
+                "--channels=1",
+                "/dev/null"
+            ]
+            
+            result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=test_duration + 2)
+            
+            # Si parecord no falló, significa que hay audio disponible
+            if result.returncode == 0 or result.returncode == 124:  # 124 = timeout normal
+                log(f"✅ Audio fluyendo correctamente en {monitor_device}", "SUCCESS")
+                return True
+            else:
+                log(f"❌ Sin flujo de audio en {monitor_device} (código: {result.returncode})", "WARN")
+                if result.stderr:
+                    log(f"Error: {result.stderr.strip()}", "DEBUG")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            log(f"✅ Audio detectado (timeout normal después de {test_duration}s)", "SUCCESS")
+            return True
+        except Exception as e:
+            log(f"Error verificando flujo de audio: {e}", "ERROR")
+            return False
+
+    def check_streams_connected(self, firefox_pid):
+        """
+        Verifica si los streams de Firefox están conectados al sink.
+        
+        Args:
+            firefox_pid: PID del proceso Firefox
+            
+        Returns:
+            tuple: (conectados, lista_de_streams)
+        """
+        try:
+            # Buscar streams de Firefox
+            streams = self.find_streams_by_pid(firefox_pid)
+            
+            if not streams:
+                log(f"⚠️ No se encontraron streams para PID {firefox_pid}", "WARN")
+                return False, []
+            
+            # Verificar si están conectados al sink correcto
+            result = subprocess.run(["pactl", "list", "sink-inputs"], 
+                                  capture_output=True, text=True, check=True)
+            
+            connected_streams = []
+            for stream_id in streams:
+                if f"Sink: {self.sink_name}" in result.stdout or f"Sink: {self.sink_index}" in result.stdout:
+                    connected_streams.append(stream_id)
+            
+            is_connected = len(connected_streams) > 0
+            log(f"🔍 Streams conectados: {len(connected_streams)}/{len(streams)}", "DEBUG")
+            
+            return is_connected, streams
+            
+        except Exception as e:
+            log(f"Error verificando streams: {e}", "ERROR")
+            return False, []
+    
+    def reconnect_streams_if_needed(self, firefox_pid):
+        """
+        Verifica y reconecta streams de Firefox si es necesario.
+        
+        Args:
+            firefox_pid: PID del proceso Firefox
+            
+        Returns:
+            bool: True si los streams están conectados (o se reconectaron)
+        """
+        try:
+            connected, streams = self.check_streams_connected(firefox_pid)
+            
+            if connected:
+                log("✅ Streams ya están conectados correctamente", "DEBUG")
+                return True
+            
+            if not streams:
+                # Buscar nuevos streams
+                log("🔍 Buscando nuevos streams de Firefox...", "INFO")
+                streams = self.wait_for_streams(firefox_pid, max_wait_time=10, check_interval=1)
+                
+                if not streams:
+                    log("❌ No se encontraron streams de Firefox", "WARN")
+                    return False
+            
+            # Intentar reconectar streams
+            log(f"🔄 Reconectando {len(streams)} streams al sink...", "INFO")
+            moved_count = self.move_streams_to_sink(streams, self.sink_name)
+            
+            if moved_count > 0:
+                log(f"✅ Reconectados {moved_count} streams exitosamente", "SUCCESS")
+                return True
+            else:
+                log("❌ No se pudieron reconectar streams", "ERROR")
+                return False
+                
+        except Exception as e:
+            log(f"Error en reconexión de streams: {e}", "ERROR")
+            return False
+
     def cleanup(self):
         """Limpia todos los recursos de PulseAudio creados por este manager."""
         log("🛑 Limpiando recursos de PulseAudio...", "INFO")

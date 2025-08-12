@@ -61,6 +61,71 @@ def monitor_youtube_activity(driver):
         time.sleep(15)  # Cada 15 segundos
         YouTubeJSUtils.keep_youtube_active(driver)
 
+def monitor_audio_connectivity(pulse_manager, firefox_pid, check_interval=30):
+    """
+    Monitorea la conectividad de audio y reconecta streams automáticamente.
+    
+    Args:
+        pulse_manager: Instancia de PulseAudioManager
+        firefox_pid: PID del proceso Firefox
+        check_interval: Intervalo de verificación en segundos
+    """
+    def check_audio_connectivity():
+        log("🔊 Iniciando monitoreo de conectividad de audio...", "INFO")
+        consecutive_failures = 0
+        
+        while not stop_event.is_set():
+            try:
+                # 1. Verificar si los streams están conectados
+                connected, streams = pulse_manager.check_streams_connected(firefox_pid)
+                
+                # 2. Verificar si hay flujo de audio real
+                audio_flowing = pulse_manager.verify_audio_flowing(pulse_manager.sink_name, test_duration=2)
+                
+                # Determinar el estado general
+                audio_healthy = connected and audio_flowing
+                
+                if audio_healthy:
+                    if consecutive_failures > 0:
+                        log("✅ Conectividad de audio completamente restaurada", "SUCCESS")
+                    consecutive_failures = 0
+                    log(f"🎧 Audio: {len(streams)} streams conectados + flujo activo", "DEBUG")
+                else:
+                    consecutive_failures += 1
+                    
+                    if not connected:
+                        log(f"⚠️ Streams desconectados (intento {consecutive_failures})", "WARN")
+                    elif not audio_flowing:
+                        log(f"⚠️ Sin flujo de audio detectado (intento {consecutive_failures})", "WARN")
+                    
+                    # Intentar reconectar
+                    if pulse_manager.reconnect_streams_if_needed(firefox_pid):
+                        log("🔄 Reconexión de streams exitosa", "SUCCESS")
+                        
+                        # Verificar si ahora hay flujo
+                        if pulse_manager.verify_audio_flowing(pulse_manager.sink_name, test_duration=2):
+                            log("✅ Flujo de audio restaurado", "SUCCESS")
+                            consecutive_failures = 0
+                        else:
+                            log("⚠️ Streams reconectados pero sin flujo de audio", "WARN")
+                    else:
+                        log(f"❌ Fallo en reconexión ({consecutive_failures}/3)", "ERROR")
+                        
+                        # Si fallamos 3 veces consecutivas, algo está mal
+                        if consecutive_failures >= 3:
+                            log("🚨 CRÍTICO: Múltiples fallos de audio - verificar sistema", "ERROR")
+                            consecutive_failures = 0  # Reset para evitar spam
+                
+            except Exception as e:
+                log(f"Error en monitoreo de audio: {e}", "ERROR")
+            
+            time.sleep(check_interval)
+    
+    monitor_thread = threading.Thread(target=check_audio_connectivity, daemon=True)
+    monitor_thread.start()
+    log(f"✅ Monitoreo de audio iniciado (cada {check_interval}s)", "SUCCESS")
+    return monitor_thread
+
 def cleanup():
     global pulse_manager, firefox_manager, recording_manager, stop_event
     
@@ -156,6 +221,14 @@ def main():
         pulse_device = pulse_manager.pulse_device
         recording_manager = RecordingManager(pulse_device)
         
+        # Configurar referencias para monitoreo de audio
+        firefox_pid = firefox_manager.get_firefox_pid()
+        if firefox_pid:
+            recording_manager.set_monitoring_references(pulse_manager, firefox_pid)
+            log(f"✅ Monitoreo de audio configurado para PID {firefox_pid}", "SUCCESS")
+        else:
+            log("⚠️ No se pudo obtener PID de Firefox para monitoreo", "WARN")
+        
         # Iniciar grabación WAV cada 15 segundos
         if recording_manager.start_wav_recording(interval=15):
             log("✅ Grabación WAV iniciada (cada 15 segundos)", "SUCCESS")
@@ -172,6 +245,13 @@ def main():
         monitor_thread = threading.Thread(target=monitor_youtube_activity, args=(driver,), daemon=True)
         monitor_thread.start()
         log("✅ Monitoreo de actividad YouTube iniciado", "SUCCESS")
+        
+        # Monitoreo de conectividad de audio
+        if firefox_pid:
+            audio_monitor_thread = monitor_audio_connectivity(pulse_manager, firefox_pid, check_interval=20)
+            log("✅ Monitoreo de conectividad de audio iniciado", "SUCCESS")
+        else:
+            log("⚠️ No se pudo iniciar monitoreo de audio sin PID", "WARN")
 
         # 5. VERIFICACIONES FINALES
         log("🔍 Realizando verificaciones finales...", "INFO")
