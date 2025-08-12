@@ -96,6 +96,7 @@ class RecordingManager:
                         "-acodec", "pcm_s16le",
                         "-ar", str(self.sample_rate),
                         "-ac", str(self.channels),
+                        "-loglevel", "error",  # Solo mostrar errores, no info verbosa
                         full_path
                     ]
                     
@@ -103,9 +104,28 @@ class RecordingManager:
                     proc = subprocess.run(cmd, capture_output=True, text=True)
                     
                     if proc.returncode == 0:
-                        log(f"✅ Grabación completada: {output_file}", "SUCCESS")
+                        # Verificar que el archivo se creó y tiene contenido
+                        if os.path.exists(full_path) and os.path.getsize(full_path) > 1000:  # Al menos 1KB
+                            log(f"✅ Grabación completada: {output_file}", "SUCCESS")
+                        else:
+                            log(f"⚠️ Archivo creado pero muy pequeño: {output_file}", "WARN")
+                    elif proc.returncode == 255:
+                        # Código 255 = Interrupción por señal (Ctrl+C) - NORMAL
+                        if os.path.exists(full_path) and os.path.getsize(full_path) > 1000:
+                            duration_recorded = os.path.getsize(full_path) / (self.sample_rate * self.channels * 2)  # Aproximado
+                            log(f"🔄 Grabación interrumpida pero guardada: {output_file} (~{duration_recorded:.1f}s)", "INFO")
+                        else:
+                            log(f"🗑️ Grabación interrumpida sin contenido útil: {output_file}", "WARN")
+                            # Eliminar archivo vacío o muy pequeño
+                            if os.path.exists(full_path):
+                                os.remove(full_path)
                     else:
-                        log(f"❌ Error en grabación: {proc.stderr}", "ERROR")
+                        # Error real de ffmpeg
+                        error_lines = proc.stderr.strip().split('\n')
+                        # Solo mostrar las últimas líneas importantes, no todo el output
+                        relevant_error = error_lines[-1] if error_lines else "Error desconocido"
+                        log(f"❌ Error en grabación: {relevant_error}", "ERROR")
+                        log(f"📝 Comando: ffmpeg ... {output_file}", "DEBUG")
                     
                     contador += 1
                     
@@ -214,19 +234,23 @@ class RecordingManager:
         # Señalar parada a todos los hilos
         self.stop_event.set()
         
-        # Esperar a que terminen los hilos
+        # Esperar a que terminen los hilos con timeout más generoso para grabación
         if self.recording_thread and self.recording_thread.is_alive():
-            self.recording_thread.join(timeout=5)
-            log("Hilo de grabación WAV detenido", "SUCCESS")
+            log("⏳ Esperando que termine la grabación actual...", "DEBUG")
+            self.recording_thread.join(timeout=20)  # 20s para permitir que ffmpeg termine limpiamente
+            if self.recording_thread.is_alive():
+                log("⚠️ Timeout esperando grabación, forzando parada", "WARN")
+            else:
+                log("✅ Hilo de grabación WAV detenido limpiamente", "SUCCESS")
         
         if self.streaming_thread and self.streaming_thread.is_alive():
             self.streaming_thread.join(timeout=5)
-            log("Hilo de streaming RTP detenido", "SUCCESS")
+            log("✅ Hilo de streaming RTP detenido", "SUCCESS")
         
         # Terminar proceso parec si está activo
         if self.parec_process and self.parec_process.poll() is None:
             self.parec_process.kill()
-            log("Proceso parec terminado", "SUCCESS")
+            log("✅ Proceso parec terminado", "SUCCESS")
         
         log("✅ Todas las grabaciones detenidas", "SUCCESS")
     

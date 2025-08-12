@@ -41,8 +41,10 @@ def monitor_javascript_health(driver, interval=30):
                     log("JavaScript health check: PROBLEMA DETECTADO", "WARN")
                     log(f"Estado: {state}", "DEBUG")
                     # Reactivar usando YouTubeJSUtils
+                    log("🔄 Intentando reactivar video...", "INFO")
                     YouTubeJSUtils.play_video(driver)
                     YouTubeJSUtils.configure_audio(driver, muted=False, volume=1.0)
+                    log("✅ Comandos de reactivación enviados", "SUCCESS")
             except Exception as e:
                 log(f"Error en health check: {e}", "ERROR")
                 break
