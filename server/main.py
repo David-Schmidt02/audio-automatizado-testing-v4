@@ -57,13 +57,13 @@ def udp_listener():
             data, addr = sock.recvfrom(1600)
             addr_str = f"{addr[0]}:{addr[1]}"
             
-            log(f"Received {len(data)} bytes from {addr_str}", "DEBUG")
+            #log(f"Received {len(data)} bytes from {addr_str}", "DEBUG")
             
             # Parse RTP packet
             try:
                 rtp_packet = RTP()
                 rtp_packet.fromBytearray(bytearray(data))  # Sin () - método estático
-                log(f"Successfully parsed RTP packet, payload length: {len(rtp_packet.payload)}", "DEBUG")
+                #log(f"Successfully parsed RTP packet, payload length: {len(rtp_packet.payload)}", "DEBUG")
             except Exception as e:
                 log(f"Error parsing RTP packet: {e}", "ERROR")
                 continue

@@ -79,7 +79,7 @@ def create_rtp_packet(payload, sequence_number):
     if not isinstance(payload, bytearray):
         payload = bytearray(payload)
     
-    log(f"Payload type: {type(payload)}, length: {len(payload)}", "DEBUG")
+    #log(f"Payload type: {type(payload)}, length: {len(payload)}", "DEBUG")
     
     rtp_packet = RTP(
         version=2,  # Usar valor directo 2
