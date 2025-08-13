@@ -320,57 +320,80 @@ def start_ad_control(url):
 
 
 def record_audio(pulse_device, segment_time = 5):
-    """Graba un audio constante usando ffmpeg."""
-    print(f"🎵 Starting audio recording")
+    """Graba un stream continuo dividido automáticamente en múltiples archivos usando ffmpeg segment."""
+    print(f"🎵 Starting continuous audio recording with {segment_time}s segments")
 
     # Crear directorio si no existe
     os.makedirs(output_dir, exist_ok=True)
     
-    chunk_number = 1
-    
-    while not stop_event.is_set():
-        try:
-            # Crear nombre de archivo con timestamp
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            output_file = f"audio_chunk_{timestamp}_{chunk_number:03d}.wav"
-            full_path = os.path.join(output_dir, output_file)
+    try:
+        # Template para nombres de archivo - %03d será reemplazado por 001, 002, 003, etc.
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_template = os.path.join(output_dir, f"audio_chunk_{timestamp}_%03d.wav")
+        
+        print(f"🎵 Recording continuous stream to: {output_template}")
+        
+        # Comando ffmpeg para stream continuo con segmentación automática
+        cmd = [
+            "ffmpeg",
+            "-y",  # Sobrescribir si existe
+            "-f", "pulse",
+            "-i", pulse_device,
+            "-acodec", "pcm_s16le",
+            "-ar", "48000",
+            "-ac", "1",
+            "-f", "segment",
+            "-segment_time", str(segment_time),  # Duración de cada segmento
+            "-reset_timestamps", "1",  # Resetear timestamps en cada segmento
+            "-segment_format", "wav",  # Formato de cada segmento
+            "-loglevel", "error",  # Solo mostrar errores
+            output_template
+        ]
+        
+        print(f"🚀 Starting continuous recording...")
+        
+        # Ejecutar ffmpeg en modo continuo (no esperar a que termine)
+        process = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True)
+        
+        # Monitorear el proceso en un hilo separado
+        def monitor_ffmpeg():
+            while not stop_event.is_set() and process.poll() is None:
+                time.sleep(1)
+                
+                # Buscar archivos nuevos y enviarlos por RTP
+                try:
+                    for filename in os.listdir(output_dir):
+                        if filename.startswith(f"audio_chunk_{timestamp}") and filename.endswith(".wav"):
+                            file_path = os.path.join(output_dir, filename)
+                            # Solo procesar archivos que no estén siendo escritos
+                            if os.path.getsize(file_path) > 1000:
+                                try:
+                                    send_pcm_to_server(file_path)
+                                    print(f"📡 Enviado por RTP: {filename}")
+                                except Exception as rtp_error:
+                                    print(f"⚠️ Error enviando {filename}: {rtp_error}")
+                except Exception as e:
+                    print(f"⚠️ Error monitoreando archivos: {e}")
+        
+        # Iniciar monitoreo en hilo separado
+        monitor_thread = threading.Thread(target=monitor_ffmpeg, daemon=True)
+        monitor_thread.start()
+        
+        # Esperar hasta que se detenga
+        while not stop_event.is_set():
+            if process.poll() is not None:
+                print("⚠️ FFmpeg process terminated unexpectedly")
+                break
+            time.sleep(1)
+        
+        # Terminar proceso FFmpeg si sigue ejecutándose
+        if process.poll() is None:
+            print("🛑 Stopping FFmpeg...")
+            process.terminate()
+            process.wait(timeout=5)
             
-            print(f"🎵 Recording: {output_file}")
-            
-            # Comando ffmpeg para grabar exactamente el intervalo especificado
-            cmd = [
-                "ffmpeg",
-                "-f", "pulse",
-                "-i", pulse_device,
-                "-acodec", "pcm_s16le",
-                "-ar", "48000",
-                "-ac", "1",
-                "-f","segment",
-                "-segment_time", str(segment_time),
-                "-reset_timestamps", "1",
-                "-loglevel", "error",  # Solo mostrar errores
-                full_path
-            ]
-            
-            # Ejecutar ffmpeg y esperar a que termine
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                # Verificar que el archivo se creó y tiene contenido
-                if os.path.exists(full_path) and os.path.getsize(full_path) > 1000:
-                    print(f"✅ Recording completed: {output_file}")
-                    send_pcm_to_server(full_path)
-                else:
-                    print(f"⚠️ File created but very small: {output_file}")
-            else:
-                print(f"❌ FFmpeg error: {result.stderr.strip()}")
-            
-            chunk_number += 1
-            
-        except Exception as e:
-            print(f"❌ Error recording audio: {e}")
-            if not stop_event.is_set():
-                time.sleep(5)  # Esperar antes de reintentar
+    except Exception as e:
+        print(f"❌ Error in continuous recording: {e}")
 
 
 def start_audio_recording(pulse_device):
