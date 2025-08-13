@@ -50,7 +50,7 @@ def udp_listener():
     print(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}")
     print("🔊 Saving incoming audio streams to .wav files...")
 
-    client_packets = defaultdict(list)  # addr_str -> lista de payloads
+    client_packets = defaultdict(list)  # ssrc -> lista de payloads
     
     while True:
         try:
@@ -68,13 +68,16 @@ def udp_listener():
                 log(f"Error parsing RTP packet: {e}", "ERROR")
                 continue
             
+            # Usar SSRC como identificador único del cliente
+            client_id = str(rtp_packet.ssrc)
+            
             # Agregar payload a la lista del cliente
-            client_packets[addr_str].append(rtp_packet.payload)
+            client_packets[client_id].append(rtp_packet.payload)
             
             # Crear archivo WAV cada 240 paquetes (aprox 5 segundos)
-            if len(client_packets[addr_str]) >= 240:
-                create_wav_file(addr_str, client_packets[addr_str])
-                client_packets[addr_str] = []  # Reset lista
+            if len(client_packets[client_id]) >= 240:
+                create_wav_file(client_id, client_packets[client_id])
+                client_packets[client_id] = []  # Reset lista
 
         except Exception as e:
             if isinstance(e, OSError) and str(e) == 'Bad file descriptor':

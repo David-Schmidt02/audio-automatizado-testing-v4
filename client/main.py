@@ -417,16 +417,15 @@ def start_audio_recording(pulse_device):
 
 
 def main():
-    """Función principal siguiendo exactamente el patrón del script Go."""
+    """Función principal."""
     
     # 1. Validar argumentos de línea de comandos
-    """if len(sys.argv) != 2:
+    if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <URL>")
         print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live'")
         sys.exit(1)
     
-    url = sys.argv[1]"""
-    url = "https://www.youtube.com/@todonoticias/live"
+    url = sys.argv[1]
 
     global id_instance, output_dir
     id_instance = random.randint(1000, 100000)
