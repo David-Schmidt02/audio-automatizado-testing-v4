@@ -59,12 +59,12 @@ def send_rtp_to_server(wav_path):
 
 def create_rtp_packet(payload, sequence_number):
     rtp_packet = RTP(
-        version=RTP_VERSION,
-        payload_type=PAYLOAD_TYPE,
-        sequence_number=sequence_number,
-        ssrc=SSRC,
+        version=2,
+        payloadType=PayloadType.DYNAMIC_96,  # Usar PayloadType enum
+        sequenceNumber=sequence_number,      # camelCase
         timestamp=int(time.time() * SAMPLE_RATE) % 2**32,
-        payload=payload
+        ssrc=SSRC,
+        payload=bytearray(payload) if not isinstance(payload, bytearray) else payload
     )
     return rtp_packet
 
