@@ -12,6 +12,7 @@ import time
 import threading
 import subprocess
 import random
+from rtp_client import send_pcm_to_server
 
 # Importaciones para Selenium (control de ads)
 try:
@@ -36,7 +37,8 @@ recording_thread = None
 selenium_driver = None
 ad_control_thread = None
 firefox_profile_dir = None
-
+id_instance = None
+output_dir = None
 
 def cleanup():
     """Limpieza de recursos al finalizar - siguiendo patrón Go."""
@@ -317,10 +319,10 @@ def start_ad_control(url):
     return True
 
 
-def record_audio_chunks(pulse_device, interval=15, output_dir="records"):
-    """Graba chunks de audio de duración específica usando ffmpeg."""
-    print(f"🎵 Starting audio recording: {interval}s chunks in '{output_dir}' directory")
-    
+def record_audio(pulse_device, segment_time = 5):
+    """Graba un audio constante usando ffmpeg."""
+    print(f"🎵 Starting audio recording")
+
     # Crear directorio si no existe
     os.makedirs(output_dir, exist_ok=True)
     
@@ -338,13 +340,14 @@ def record_audio_chunks(pulse_device, interval=15, output_dir="records"):
             # Comando ffmpeg para grabar exactamente el intervalo especificado
             cmd = [
                 "ffmpeg",
-                "-y",  # Sobrescribir archivo si existe
                 "-f", "pulse",
                 "-i", pulse_device,
-                "-t", str(interval),  # Duración
                 "-acodec", "pcm_s16le",
                 "-ar", "48000",
                 "-ac", "1",
+                "-f","segment",
+                "-segment_time", str(segment_time),
+                "-reset_timestamps", "1",
                 "-loglevel", "error",  # Solo mostrar errores
                 full_path
             ]
@@ -356,6 +359,7 @@ def record_audio_chunks(pulse_device, interval=15, output_dir="records"):
                 # Verificar que el archivo se creó y tiene contenido
                 if os.path.exists(full_path) and os.path.getsize(full_path) > 1000:
                     print(f"✅ Recording completed: {output_file}")
+                    send_pcm_to_server(full_path)
                 else:
                     print(f"⚠️ File created but very small: {output_file}")
             else:
@@ -396,6 +400,11 @@ def main():
     
     url = sys.argv[1]"""
     url = "https://www.youtube.com/@todonoticias/live"
+
+    global id_instance, output_dir
+    id_instance = random.randint(1000, 100000)
+    output_dir = f"records-{id_instance}"
+
     # Configurar señales para cleanup
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
