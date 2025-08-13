@@ -381,7 +381,7 @@ def start_audio_recording(pulse_device):
     print(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}")
     
     recording_thread = threading.Thread(
-        target=record_audio_chunks, 
+        target=record_audio, 
         args=(pulse_device_monitor,), 
         daemon=True
     )
