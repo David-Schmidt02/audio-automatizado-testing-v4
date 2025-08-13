@@ -4,8 +4,6 @@ import time
 import wave
 import os
 from rtp import RTP, PayloadType
-from main import id_instance, output_dir
-
 
 # Configuración RTP
 RTP_VERSION = 2
@@ -22,11 +20,13 @@ SAMPLE_RATE = 48000  # 48kHz
 CHANNELS = 1  # Mono
 SAMPLE_FORMAT = "int16"
 
-SSRC = id_instance
+SSRC = None  # SSRC 
 
 
-def send_pcm_to_server(wav_path):
+def send_pcm_to_server(wav_path, id_instance):
+    global SSRC
     global sock
+    SSRC = id_instance
     with wave.open(wav_path, "rb") as wf:
         while True:
             frame = wf.readframes(FRAME_SIZE)
