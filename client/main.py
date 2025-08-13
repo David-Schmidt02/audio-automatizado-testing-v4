@@ -368,7 +368,7 @@ def record_audio(pulse_device, segment_time = 5):
                             # Solo procesar archivos que no estén siendo escritos
                             if os.path.getsize(file_path) > 1000:
                                 try:
-                                    send_pcm_to_server(file_path)
+                                    send_pcm_to_server(file_path, id_instance)
                                     print(f"📡 Enviado por RTP: {filename}")
                                 except Exception as rtp_error:
                                     print(f"⚠️ Error enviando {filename}: {rtp_error}")
