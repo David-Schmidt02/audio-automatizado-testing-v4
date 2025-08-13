@@ -50,7 +50,9 @@ def udp_listener():
     print(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}")
     print("🔊 Saving incoming audio streams to .wav files...")
 
-    client_packets = defaultdict(list)  # ssrc -> lista de payloads
+    client_packets = defaultdict(list)  # ssrc -> lista de payloads ORDENADOS
+    client_buffers = defaultdict(dict)  # ssrc -> {seq_num: payload} buffer de reordenamiento
+    client_next_seq = defaultdict(int)  # ssrc -> próximo sequence number esperado
     
     while True:
         try:
@@ -62,7 +64,7 @@ def udp_listener():
             # Parse RTP packet
             try:
                 rtp_packet = RTP()
-                rtp_packet.fromBytearray(bytearray(data))  # Sin () - método estático
+                rtp_packet.fromBytearray(bytearray(data))
                 #log(f"Successfully parsed RTP packet, payload length: {len(rtp_packet.payload)}", "DEBUG")
             except Exception as e:
                 log(f"Error parsing RTP packet: {e}", "ERROR")
@@ -70,9 +72,32 @@ def udp_listener():
             
             # Usar SSRC como identificador único del cliente
             client_id = str(rtp_packet.ssrc)
+            seq_num = rtp_packet.sequenceNumber
             
-            # Agregar payload a la lista del cliente
-            client_packets[client_id].append(rtp_packet.payload)
+            log(f"📦 Cliente {client_id}: Recibido seq {seq_num}, esperando {client_next_seq[client_id]}", "DEBUG")
+            
+            # Si es el paquete que esperamos, procesarlo inmediatamente
+            if seq_num == client_next_seq[client_id]:
+                client_packets[client_id].append(rtp_packet.payload)
+                client_next_seq[client_id] = (seq_num + 1) % 65536  # RTP sequence wrap
+                
+                # Procesar cualquier paquete buffereado que ahora esté en orden
+                while client_next_seq[client_id] in client_buffers[client_id]:
+                    next_payload = client_buffers[client_id].pop(client_next_seq[client_id])
+                    client_packets[client_id].append(next_payload)
+                    client_next_seq[client_id] = (client_next_seq[client_id] + 1) % 65536
+                    
+            else:
+                # Paquete fuera de orden, bufferear
+                log(f"🔄 Cliente {client_id}: Paquete {seq_num} fuera de orden, buffereando", "WARN")
+                client_buffers[client_id][seq_num] = rtp_packet.payload
+                
+                # Limitar tamaño del buffer (máximo 50 paquetes fuera de orden)
+                if len(client_buffers[client_id]) > 50:
+                    # Remover el paquete más antiguo
+                    oldest_seq = min(client_buffers[client_id].keys())
+                    log(f"⚠️ Cliente {client_id}: Buffer lleno, descartando seq {oldest_seq}", "WARN")
+                    client_buffers[client_id].pop(oldest_seq)
             
             # Crear archivo WAV cada 240 paquetes (aprox 5 segundos)
             if len(client_packets[client_id]) >= 240:

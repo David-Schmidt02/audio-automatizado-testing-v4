@@ -47,7 +47,11 @@ def send_pcm_to_server(wav_path, id_instance):
             # Crear paquete RTP con el frame de audio
             rtp_packet = create_rtp_packet(bytearray(frame), sequence_number)
             sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
-            sequence_number += 1
+            
+            if sequence_number % 100 == 0:  # Log cada 100 paquetes
+                log(f"📤 Enviado paquete seq {sequence_number} para archivo {os.path.basename(wav_path)}", "DEBUG")
+            
+            sequence_number = (sequence_number + 1) % 65536  # Wrap RTP sequence
             
             # Opcional: agregar pequeña pausa para simular timing real
             time.sleep(FRAME_SIZE / SAMPLE_RATE)
@@ -81,11 +85,14 @@ def create_rtp_packet(payload, sequence_number):
     
     #log(f"Payload type: {type(payload)}, length: {len(payload)}", "DEBUG")
     
+    # Usar timestamp basado en samples, no en tiempo real
+    timestamp = sequence_number * FRAME_SIZE  # Timestamp basado en samples procesados
+    
     rtp_packet = RTP(
         version=2,  # Usar valor directo 2
         payloadType=PayloadType.DYNAMIC_96,  # Usar PayloadType enum
         sequenceNumber=sequence_number,      # camelCase
-        timestamp=int(time.time() * SAMPLE_RATE) % 2**32,
+        timestamp=timestamp % 2**32,         # Timestamp predecible basado en samples
         ssrc=SSRC,
         payload=payload
     )
