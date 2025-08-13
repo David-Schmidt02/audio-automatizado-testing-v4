@@ -27,13 +27,21 @@ def send_pcm_to_server(wav_path, id_instance):
     global SSRC
     global sock
     SSRC = id_instance
+    sequence_number = 0
+    
     with wave.open(wav_path, "rb") as wf:
         while True:
             frame = wf.readframes(FRAME_SIZE)
             if not frame:
                 break
-            sock.sendto(frame, (DEST_IP, DEST_PORT))
-            # Por ahora lo mandamos tal cual como PCM luego podríamos modificarlo para codificar y mandar como RTP
+            
+            # Crear paquete RTP con el frame de audio
+            rtp_packet = create_rtp_packet(bytearray(frame), sequence_number)
+            sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
+            sequence_number += 1
+            
+            # Opcional: agregar pequeña pausa para simular timing real
+            time.sleep(FRAME_SIZE / SAMPLE_RATE)
 
 
 def send_rtp_to_server(wav_path):
@@ -59,7 +67,6 @@ def create_rtp_packet(payload, sequence_number):
         payload=payload
     )
     return rtp_packet
-
 
 
 
