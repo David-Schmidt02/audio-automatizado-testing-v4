@@ -34,4 +34,4 @@ def log(message, level="INFO"):
     }
     
     color = color_map.get(level, Colors.WHITE)
-    logger.log(level, f"{color}[{timestamp}] [{level}] {message}{Colors.END}")
+    print(f"{color}[{timestamp}] [{level}] {message}{Colors.END}")
