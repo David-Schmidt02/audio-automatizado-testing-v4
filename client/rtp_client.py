@@ -32,6 +32,7 @@ SSRC = None  # SSRC
 def send_pcm_to_server(wav_path, id_instance):
     global SSRC
     global sock
+    # Asegurar que SSRC tiene un valor válido
     SSRC = id_instance
     sequence_number = 0
 
@@ -55,8 +56,10 @@ def send_pcm_to_server(wav_path, id_instance):
 
 
 def send_rtp_to_server(wav_path):
+    global SSRC
     sequence_number = 0
     global sock
+
     log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
     with wave.open(wav_path, "rb") as wf:
         while True:
@@ -75,6 +78,8 @@ def create_rtp_packet(payload, sequence_number):
     # Asegurar que payload es bytearray
     if not isinstance(payload, bytearray):
         payload = bytearray(payload)
+    
+    log(f"Payload type: {type(payload)}, length: {len(payload)}", "DEBUG")
     
     rtp_packet = RTP(
         version=2,  # Usar valor directo 2
