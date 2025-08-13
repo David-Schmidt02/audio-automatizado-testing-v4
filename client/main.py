@@ -14,6 +14,10 @@ import subprocess
 import random
 from rtp_client import send_pcm_to_server
 
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
+from my_logger import log
+
 # Importaciones para Selenium (control de ads)
 try:
     from selenium import webdriver
@@ -24,7 +28,7 @@ try:
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
-    print("⚠️ Selenium no disponible - sin control de ads automático")
+    log("⚠️ Selenium no disponible - sin control de ads automático", "WARNING")
 
 # Variable global para parar hilos
 stop_event = threading.Event()
@@ -43,28 +47,28 @@ output_dir = None
 def cleanup():
     """Limpieza de recursos al finalizar - siguiendo patrón Go."""
     global sink_name, module_id, firefox_process, recording_thread, selenium_driver, ad_control_thread, firefox_profile_dir
-    
-    print("\n🛑 Received shutdown signal. Cleaning up...")
-    
+
+    log("\n🛑 Received shutdown signal. Cleaning up...", "WARNING")
+
     # Señalar a todos los hilos que paren
     stop_event.set()
     
     # Cerrar Selenium driver
     if selenium_driver:
-        print("🔥 Closing Selenium driver...")
+        log("🔥 Closing Selenium driver...", "INFO")
         try:
             selenium_driver.quit()
         except Exception as e:
-            print(f"⚠️ Error closing Selenium: {e}")
-    
+            log(f"⚠️ Error closing Selenium: {e}", "ERROR")
+
     # Terminar Firefox
     if firefox_process:
-        print("🔥 Terminating Firefox...")
+        log("🔥 Terminating Firefox...", "INFO")
         try:
             firefox_process.terminate()
             firefox_process.wait(timeout=5)
         except Exception as e:
-            print(f"⚠️ Failed to terminate Firefox: {e}")
+            log(f"⚠️ Failed to terminate Firefox: {e}", "ERROR")
             try:
                 firefox_process.kill()
             except:
@@ -75,29 +79,29 @@ def cleanup():
         try:
             import shutil
             shutil.rmtree(firefox_profile_dir)
-            print(f"🗑️ Perfil Firefox eliminado: {firefox_profile_dir}")
+            log(f"🗑️ Perfil Firefox eliminado: {firefox_profile_dir}", "INFO")
         except Exception as e:
-            print(f"⚠️ Error eliminando perfil Firefox: {e}")
-    
+            log(f"⚠️ Error eliminando perfil Firefox: {e}", "ERROR")
+
     # Esperar a que termine el hilo de grabación
     if recording_thread and recording_thread.is_alive():
-        print("🔥 Waiting for recording thread to finish...")
+        log("🔥 Waiting for recording thread to finish...", "INFO")
         recording_thread.join(timeout=10)
     
     # Esperar a que termine el hilo de control de ads
     if ad_control_thread and ad_control_thread.is_alive():
-        print("🔥 Waiting for ad control thread to finish...")
+        log("🔥 Waiting for ad control thread to finish...", "INFO")
         ad_control_thread.join(timeout=5)
     
     # Descargar módulo PulseAudio
     if module_id:
-        print(f"🎧 Unloading PulseAudio module: {module_id}")
+        log(f"🎧 Unloading PulseAudio module: {module_id}", "INFO")
         try:
             subprocess.run(["pactl", "unload-module", module_id], check=True)
         except Exception as e:
-            print(f"⚠️ Failed to unload PulseAudio module: {e}")
-    
-    print("✅ Cleanup complete. Exiting.")
+            log(f"⚠️ Failed to unload PulseAudio module: {e}", "ERROR")
+
+    log("✅ Cleanup complete. Exiting.", "INFO")
 
 
 def signal_handler(sig, frame):
@@ -112,8 +116,8 @@ def create_pulse_sink():
     
     # Generar nombre único
     sink_name = f"simple-audio-{random.randint(10000, 99999)}"
-    print(f"🎧 Creating PulseAudio sink: {sink_name}")
-    
+    log(f"🎧 Creating PulseAudio sink: {sink_name}", "INFO")
+
     try:
         # Crear sink
         result = subprocess.run([
@@ -122,17 +126,17 @@ def create_pulse_sink():
         ], capture_output=True, text=True, check=True)
         
         module_id = result.stdout.strip()
-        print(f"✅ PulseAudio sink created with module ID: {module_id}")
-        
+        log(f"✅ PulseAudio sink created with module ID: {module_id}", "INFO")
+
         # Esperar inicialización como en Go
-        print("⏳ Waiting for PulseAudio sink to initialize...")
+        log("⏳ Waiting for PulseAudio sink to initialize...", "INFO")
         time.sleep(2)
         
         return sink_name
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to create PulseAudio sink: {e}")
-        print("Make sure PulseAudio is running.")
+        log(f"❌ Failed to create PulseAudio sink: {e}", "ERROR")
+        log("Make sure PulseAudio is running.", "ERROR")
         return None
 
 
@@ -163,23 +167,23 @@ def create_firefox_profile_with_autoplay():
     try:
         with open(prefs_js, 'w', encoding='utf-8') as f:
             f.write('\n'.join(preferences))
-        print(f"📁 Perfil Firefox creado: {firefox_profile_dir}")
+        log(f"📁 Perfil Firefox creado: {firefox_profile_dir}", "INFO")
         return firefox_profile_dir
     except Exception as e:
-        print(f"❌ Error creando perfil: {e}")
+        log(f"❌ Error creando perfil: {e}", "ERROR")
         return None
 
 
 def launch_firefox(url, sink_name):
     """Lanza Firefox con el sink preconfigurado y autoplay habilitado."""
     global firefox_process
-    
-    print(f"🚀 Launching Firefox with URL: {url}")
-    
+
+    log(f"🚀 Launching Firefox with URL: {url}", "INFO")
+
     # Crear perfil con autoplay habilitado
     profile_dir = create_firefox_profile_with_autoplay()
     if not profile_dir:
-        print("⚠️ Usando perfil por defecto (sin autoplay optimizado)")
+        log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
         profile_args = []
     else:
         profile_args = ["--profile", profile_dir]
@@ -193,12 +197,12 @@ def launch_firefox(url, sink_name):
         cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
         
         firefox_process = subprocess.Popen(cmd, env=env)
-        
-        print("✅ Firefox launched with preconfigured audio sink and autoplay")
+
+        log("✅ Firefox launched with preconfigured audio sink and autoplay", "INFO")
         return True
         
     except Exception as e:
-        print(f"❌ Failed to start Firefox: {e}")
+        log(f"❌ Failed to start Firefox: {e}", "ERROR")
         return False
 
 
@@ -207,12 +211,12 @@ def setup_selenium_driver(url):
     global selenium_driver
     
     if not SELENIUM_AVAILABLE:
-        print("⚠️ Selenium no disponible - omitiendo control de ads")
+        log("⚠️ Selenium no disponible - omitiendo control de ads", "WARNING")
         return None
     
     try:
-        print("🎯 Configurando Selenium para control de ads...")
-        
+        log("🎯 Configurando Selenium para control de ads...", "INFO")
+
         # Configurar opciones de Firefox para Selenium
         firefox_options = Options()
         firefox_options.add_argument("--width=1280")
@@ -227,16 +231,16 @@ def setup_selenium_driver(url):
         
         # Inicializar driver
         selenium_driver = webdriver.Firefox(options=firefox_options)
-        
-        print("🌐 Abriendo URL con Selenium...")
+
+        log("🌐 Abriendo URL con Selenium...", "INFO")
         selenium_driver.get(url)
-        
-        print("✅ Selenium driver configurado exitosamente")
+
+        log("✅ Selenium driver configurado exitosamente", "INFO")
         return selenium_driver
         
     except Exception as e:
-        print(f"❌ Error configurando Selenium: {e}")
-        print("🔄 Continuando sin control automático de ads...")
+        log(f"❌ Error configurando Selenium: {e}", "ERROR")
+        log("🔄 Continuando sin control automático de ads...", "WARNING")
         return None
 
 
@@ -275,27 +279,27 @@ def skip_ads(driver):
 
 def ad_control_worker(driver):
     """Hilo worker para control de ads - intensivo al inicio, esporádico después."""
-    print("🎯 Iniciando control automático de ads...")
+    log("🎯 Iniciando control automático de ads...", "INFO")
     
     # Fase 1: Control intensivo primeros 60 segundos
-    print("🚀 Fase intensiva: buscando ads cada 5 segundos...")
+    log("🚀 Fase intensiva: buscando ads cada 5 segundos...", "INFO")
     start_time = time.time()
     intensive_duration = 60  # 60 segundos
     
     while not stop_event.is_set() and (time.time() - start_time) < intensive_duration:
         if skip_ads(driver):
-            print("🎯 Ad detectado y saltado en fase intensiva")
+            log("🎯 Ad detectado y saltado en fase intensiva", "INFO")
         time.sleep(5)
     
     # Fase 2: Control esporádico cada 2 minutos
-    print("⏱️ Cambiando a fase esporádica: verificación cada 2 minutos...")
-    
+    log("⏱️ Cambiando a fase esporádica: verificación cada 2 minutos...", "INFO")
+
     while not stop_event.is_set():
         time.sleep(60)  # Cada 2 minutos
         if skip_ads(driver):
-            print("🎯 Ad detectado y saltado en fase esporádica")
-    
-    print("🛑 Control de ads terminado")
+            log("🎯 Ad detectado y saltado en fase esporádica", "INFO")
+
+    log("🛑 Control de ads terminado", "INFO")
 
 
 def start_ad_control(url):
@@ -321,7 +325,7 @@ def start_ad_control(url):
 
 def record_audio(pulse_device, segment_time = 5):
     """Graba un stream continuo dividido automáticamente en múltiples archivos usando ffmpeg segment."""
-    print(f"🎵 Starting continuous audio recording with {segment_time}s segments")
+    log(f"🎵 Starting continuous audio recording with {segment_time}s segments", "INFO")
 
     # Crear directorio si no existe
     os.makedirs(output_dir, exist_ok=True)
@@ -330,9 +334,9 @@ def record_audio(pulse_device, segment_time = 5):
         # Template para nombres de archivo - %03d será reemplazado por 001, 002, 003, etc.
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_template = os.path.join(output_dir, f"audio_chunk_{timestamp}_%03d.wav")
-        
-        print(f"🎵 Recording continuous stream to: {output_template}")
-        
+
+        log(f"🎵 Recording continuous stream to: {output_template}", "INFO")
+
         # Comando ffmpeg para stream continuo con segmentación automática
         cmd = [
             "ffmpeg",
@@ -349,9 +353,9 @@ def record_audio(pulse_device, segment_time = 5):
             "-loglevel", "error",  # Solo mostrar errores
             output_template
         ]
-        
-        print(f"🚀 Starting continuous recording...")
-        
+
+        log(f"🚀 Starting continuous recording...", "INFO")
+
         # Ejecutar ffmpeg en modo continuo (no esperar a que termine)
         process = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True)
         
@@ -371,10 +375,10 @@ def record_audio(pulse_device, segment_time = 5):
                                     send_pcm_to_server(file_path, id_instance)
                                     print(f"📡 Enviado por RTP: {filename}")
                                 except Exception as rtp_error:
-                                    print(f"⚠️ Error enviando {filename}: {rtp_error}")
+                                    log(f"⚠️ Error enviando {filename}: {rtp_error}", "ERROR")
                 except Exception as e:
-                    print(f"⚠️ Error monitoreando archivos: {e}")
-        
+                    log(f"⚠️ Error monitoreando archivos: {e}", "ERROR")
+
         # Iniciar monitoreo en hilo separado
         monitor_thread = threading.Thread(target=monitor_ffmpeg, daemon=True)
         monitor_thread.start()
@@ -388,12 +392,12 @@ def record_audio(pulse_device, segment_time = 5):
         
         # Terminar proceso FFmpeg si sigue ejecutándose
         if process.poll() is None:
-            print("🛑 Stopping FFmpeg...")
+            log("🛑 Stopping FFmpeg...", "INFO")
             process.terminate()
             process.wait(timeout=5)
             
     except Exception as e:
-        print(f"❌ Error in continuous recording: {e}")
+        log(f"❌ Error in continuous recording: {e}", "ERROR")
 
 
 def start_audio_recording(pulse_device):
@@ -401,8 +405,8 @@ def start_audio_recording(pulse_device):
     global recording_thread
     
     pulse_device_monitor = f"{pulse_device}.monitor"
-    print(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}")
-    
+    log(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}", "INFO")
+
     recording_thread = threading.Thread(
         target=record_audio, 
         args=(pulse_device_monitor,), 

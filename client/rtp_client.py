@@ -3,7 +3,13 @@ import struct
 import time
 import wave
 import os
+import sys
 from rtp import RTP, PayloadType
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
+from my_logger import log
+
 
 # Configuración RTP
 RTP_VERSION = 2
@@ -28,7 +34,9 @@ def send_pcm_to_server(wav_path, id_instance):
     global sock
     SSRC = id_instance
     sequence_number = 0
-    
+
+    log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
+
     with wave.open(wav_path, "rb") as wf:
         while True:
             frame = wf.readframes(FRAME_SIZE)
@@ -43,10 +51,13 @@ def send_pcm_to_server(wav_path, id_instance):
             # Opcional: agregar pequeña pausa para simular timing real
             time.sleep(FRAME_SIZE / SAMPLE_RATE)
 
+    log(f"Finished sending {sequence_number} packets for file: {wav_path}", "INFO")
+
 
 def send_rtp_to_server(wav_path):
     sequence_number = 0
     global sock
+    log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
     with wave.open(wav_path, "rb") as wf:
         while True:
             frame = wf.readframes(FRAME_SIZE)
@@ -58,13 +69,20 @@ def send_rtp_to_server(wav_path):
 
 
 def create_rtp_packet(payload, sequence_number):
+    global SSRC
+    log(f"Creating RTP packet with sequence number: {sequence_number}", "DEBUG")
+
+    # Asegurar que payload es bytearray
+    if not isinstance(payload, bytearray):
+        payload = bytearray(payload)
+    
     rtp_packet = RTP(
-        version=2,
+        version=2,  # Usar valor directo 2
         payloadType=PayloadType.DYNAMIC_96,  # Usar PayloadType enum
         sequenceNumber=sequence_number,      # camelCase
         timestamp=int(time.time() * SAMPLE_RATE) % 2**32,
         ssrc=SSRC,
-        payload=bytearray(payload) if not isinstance(payload, bytearray) else payload
+        payload=payload
     )
     return rtp_packet
 

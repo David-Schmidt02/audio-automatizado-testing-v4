@@ -2,11 +2,16 @@ import socket
 import threading
 import signal
 import sys
+import os
 import time
 import wave
 import struct
 from collections import defaultdict
 from rtp import RTP 
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
+from my_logger import log
 
 # Configuración RTP
 RTP_VERSION = 2
@@ -24,26 +29,20 @@ CHANNELS = 1  # Mono
 clients_lock = threading.Lock()
 clients = dict()  # addr_str -> dict con 'wavefile' y 'lock'
 
-def create_wav_file(addr_str, payload):
-    name_wav = f"record-{time.strftime('%Y%m%d-%H%M%S')}-{addr_str}.wav"
-    with wave.open(name_wav,"wb") as wf:
+def create_wav_file(addr_str, payload_list):
+    name_wav = f"record-{time.strftime('%Y%m%d-%H%M%S')}-{addr_str.replace(':', '_')}.wav"
+    print(f"💾 Creating WAV file: {name_wav} with {len(payload_list)} packets")
+    
+    with wave.open(name_wav, "wb") as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)
         wf.setframerate(SAMPLE_RATE)
 
-        for paquete_rtp in payload:
-            wf.writeframes(paquete_rtp)
-
-def obtener_datos(sock):
-    paquetes = {}
-    sequence_number = 0
-
-    while len(paquetes) < 6000:
-        data, addr = sock.recvfrom(1600)
-        rtp_packet = RTP().fromBytearray(data)
-        paquetes[sequence_number] = rtp_packet
-        sequence_number += 1
-    return paquetes, addr
+        for payload in payload_list:
+            if isinstance(payload, bytearray):
+                wf.writeframes(payload)
+            else:
+                wf.writeframes(bytearray(payload))
 
 def udp_listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -51,17 +50,23 @@ def udp_listener():
     print(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}")
     print("🔊 Saving incoming audio streams to .wav files...")
 
+    client_packets = defaultdict(list)  # addr_str -> lista de payloads
+    
     while True:
         try:
-            #data, addr = sock.recvfrom(1600)
-            data,addr = obtener_datos(sock)
+            data, addr = sock.recvfrom(1600)
             addr_str = f"{addr[0]}:{addr[1]}"
-
-            # Parse RTP packet manualmente
-            rtp_info = RTP().fromBytearray(data)
-
-            payload = rtp_info.payload
-            create_wav_file(addr_str, payload) # Escribimos wavs de 2 minutos
+            
+            # Parse RTP packet
+            rtp_packet = RTP().fromBytearray(data)
+            
+            # Agregar payload a la lista del cliente
+            client_packets[addr_str].append(rtp_packet.payload)
+            
+            # Crear archivo WAV cada 240 paquetes (aprox 5 segundos)
+            if len(client_packets[addr_str]) >= 240:
+                create_wav_file(addr_str, client_packets[addr_str])
+                client_packets[addr_str] = []  # Reset lista
 
         except Exception as e:
             if isinstance(e, OSError) and str(e) == 'Bad file descriptor':
