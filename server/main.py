@@ -61,7 +61,7 @@ def udp_listener():
             
             # Parse RTP packet
             try:
-                rtp_packet = RTP.fromBytearray(data)  # Sin () - método estático
+                rtp_packet = RTP.fromBytearray(bytearray(data))  # Sin () - método estático
                 log(f"Successfully parsed RTP packet, payload length: {len(rtp_packet.payload)}", "DEBUG")
             except Exception as e:
                 log(f"Error parsing RTP packet: {e}", "ERROR")
