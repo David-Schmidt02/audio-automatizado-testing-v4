@@ -73,7 +73,7 @@ def send_rtp_to_server(wav_path):
 
 def create_rtp_packet(payload, sequence_number):
     global SSRC
-    log(f"Creating RTP packet with sequence number: {sequence_number}", "DEBUG")
+    #log(f"Creating RTP packet with sequence number: {sequence_number}", "DEBUG")
 
     # Asegurar que payload es bytearray
     if not isinstance(payload, bytearray):
