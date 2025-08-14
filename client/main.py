@@ -11,8 +11,19 @@ import signal
 import time
 import threading
 import subprocess
+
 import random
 from rtp_client import send_pcm_to_server
+import gc
+import tracemalloc
+def log_mem_and_objects_periodically():
+    """Log de uso de memoria y objetos vivos cada 30 segundos."""
+    tracemalloc.start()
+    while not stop_event.is_set():
+        current, peak = tracemalloc.get_traced_memory()
+        obj_count = len(gc.get_objects())
+        log(f"[MEM] Memoria actual: {current/1024/1024:.2f} MB, pico: {peak/1024/1024:.2f} MB | Objetos vivos: {obj_count}", "DEBUG")
+        time.sleep(30)
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
@@ -401,8 +412,11 @@ def main():
         print(f"Usage: {sys.argv[0]} <URL>")
         print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live'")
         sys.exit(1)
-    
+
     url = sys.argv[1]
+
+    # Lanzar hilo de log de memoria/objetos
+    threading.Thread(target=log_mem_and_objects_periodically, daemon=True).start()
 
     global id_instance, output_dir, firefox_profile_dir
     id_instance = random.randint(1000, 100000)
