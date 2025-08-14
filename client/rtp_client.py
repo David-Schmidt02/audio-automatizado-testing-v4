@@ -36,6 +36,7 @@ def send_pcm_to_server(data, id_instance):
     """
     global SSRC
     global sock
+    global SEQUENCE_NUMBER
     SSRC = id_instance
 
     total_len = len(data)
