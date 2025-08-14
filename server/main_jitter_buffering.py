@@ -37,6 +37,8 @@ CHANNELS = 1  # Mono
 clients_lock = threading.Lock()
 clients = dict()  # addr_str -> dict con 'wavefile' y 'lock'
 
+INACTIVITY_TIMEOUT = 10  # segundos de inactividad para cerrar WAV
+
 def create_wav_file(client_id):
     """Crea un WAV nuevo para el cliente."""
     name_wav = f"record-{time.strftime('%Y%m%d-%H%M%S')}-{client_id}.wav"
@@ -44,14 +46,14 @@ def create_wav_file(client_id):
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(2)
     wf.setframerate(SAMPLE_RATE)
-    print(f"💾 [Cliente {client_id}] WAV abierto: {name_wav}")
+    log(f"💾 [Cliente {client_id}] WAV abierto: {name_wav}", "INFO")
     return wf
 
 def udp_listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((LISTEN_IP, LISTEN_PORT))
-    print(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}")
-    print("🔊 Saving incoming audio streams to .wav files...")
+    log(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}", "INFO")
+    log("🔊 Saving incoming audio streams to .wav files...", "INFO")
     
     while True:
         try:
@@ -66,11 +68,10 @@ def udp_listener():
             # Usar SSRC como identificador único del cliente
             client_id = str(rtp_packet.ssrc)
             seq_num = rtp_packet.sequenceNumber
-            
+
             # Bloqueamos el dict de los clientes y si es un cliente nuevo, creamos su estructura y lanzamos un worker por cliente
-            with clients_lock: # Bloquea el acceso al dict de clientes porque se puede crear uno
+            with clients_lock:
                 if client_id not in clients:
-                    # Inicializar estructura del cliente
                     clients[client_id] = {
                         'wavefile': create_wav_file(client_id),
                         'lock': threading.Lock(),
@@ -97,11 +98,11 @@ def udp_listener():
             print(f"Error receiving or processing packet: {e}")
     sock.close()
 
-MAX_WAIT = 0.2
+MAX_WAIT = 0.5
 
 def iniciar_worker_cliente(client_id):
     """Hilo que procesa paquetes en orden y escribe en WAV."""
-    print(f"[Worker] Iniciado para cliente con SSRC: {client_id}")
+    log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
     while True:
         with client['lock']: # Si el worker entra antes que el listener al lock, no hace nada debido a que su buffer se encuentra vacio
@@ -115,29 +116,40 @@ def iniciar_worker_cliente(client_id):
                 client['next_seq'] = next_seq = (next_seq + 1) % 65536
                 client['last_time'] = time.time()
 
-        # Timeout: saltar paquetes perdidos
-        with client['lock']:
+            # Timeout: saltar paquetes perdidos
             if buffer and time.time() - client['last_time'] > MAX_WAIT:
                 min_seq = min(buffer.keys())
-                print(f"[Worker] Timeout cliente {client_id}, saltando paquete {next_seq}")
+                log(f"[Worker] Timeout cliente {client_id}, saltando paquete {next_seq} (buffer: {sorted(buffer.keys())})", "WARN")
                 client['next_seq'] = next_seq = min_seq
                 client['last_time'] = time.time()
+
+            # Cierre por inactividad
+            if not buffer and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
+                try:
+                    client['wavefile'].close()
+                    log(f"[Worker] Cliente {client_id} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
+                except Exception as e:
+                    log(f"[Worker] Error cerrando WAV de cliente {client_id}: {e}", "ERROR")
+                # Eliminar cliente del diccionario global
+                with clients_lock:
+                    clients.pop(client_id, None)
+                break
 
         time.sleep(0.01)  # evitar busy wait
 
 def shutdown_handler(signum, frame):
-    print("\n🛑 Shutting down server...")
+    log("\n🛑 Shutting down server...", "WARNING")
 
     with clients_lock:
-        print("💾 Closing all WAV files...")
+        log("💾 Closing all WAV files...", "INFO")
         for client_id, client in clients.items():
             try:
                 client['wavefile'].close()
-                print(f"Closed WAV for client {client_id}")
+                log(f"Closed WAV for client {client_id}", "INFO")
             except Exception as e:
-                print(f"Error closing WAV file for client {client_id}: {e}")
+                log(f"Error closing WAV file for client {client_id}: {e}", "ERROR")
 
-    print("✅ Cleanup complete.")
+    log("✅ Cleanup complete.", "INFO")
     sys.exit(0)
 
 if __name__ == "__main__":
