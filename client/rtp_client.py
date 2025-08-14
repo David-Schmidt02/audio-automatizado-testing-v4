@@ -29,34 +29,31 @@ SAMPLE_FORMAT = "int16"
 SSRC = None  # SSRC 
 
 
-def send_pcm_to_server(wav_path, id_instance):
+def send_pcm_to_server(data, id_instance):
+    """
+    Envía un bloque de audio PCM/WAV en tiempo real al servidor RTP.
+    """
     global SSRC
     global sock
-    # Asegurar que SSRC tiene un valor válido
     SSRC = id_instance
     sequence_number = 0
 
-    log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
+    total_len = len(data)
+    log(f"Sending raw audio stream ({total_len} bytes) with SSRC: {SSRC}", "INFO")
+    offset = 0
+    frame_bytes = FRAME_SIZE * 2  # 2 bytes por muestra (int16)
 
-    with wave.open(wav_path, "rb") as wf:
-        while True:
-            frame = wf.readframes(FRAME_SIZE)
-            if not frame:
-                break
-            
-            # Crear paquete RTP con el frame de audio
-            rtp_packet = create_rtp_packet(bytearray(frame), sequence_number)
-            sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
-            
-            if sequence_number % 100 == 0:  # Log cada 100 paquetes
-                log(f"📤 Enviado paquete seq {sequence_number} para archivo {os.path.basename(wav_path)}", "DEBUG")
-            
-            sequence_number = (sequence_number + 1) % 65536  # Wrap RTP sequence
-            
-            # Opcional: agregar pequeña pausa para simular timing real
-            time.sleep(FRAME_SIZE / SAMPLE_RATE)
-
-    log(f"Finished sending {sequence_number} packets for file: {wav_path}", "INFO")
+    while offset < total_len:
+        frame = data[offset:offset + frame_bytes]
+        if not frame:
+            break
+        rtp_packet = create_rtp_packet(bytearray(frame), sequence_number)
+        sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
+        if sequence_number % 100 == 0:
+            log(f"📤 Enviado paquete seq {sequence_number} (raw stream)", "DEBUG")
+        sequence_number = (sequence_number + 1) % 65536
+        offset += frame_bytes
+        time.sleep(FRAME_SIZE / SAMPLE_RATE)
 
 
 def send_rtp_to_server(wav_path):
