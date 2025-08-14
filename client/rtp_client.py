@@ -27,6 +27,7 @@ CHANNELS = 1  # Mono
 SAMPLE_FORMAT = "int16"
 
 SSRC = None  # SSRC 
+SEQUENCE_NUMBER = 0  # Número de secuencia para RTP
 
 
 def send_pcm_to_server(data, id_instance):
@@ -36,7 +37,6 @@ def send_pcm_to_server(data, id_instance):
     global SSRC
     global sock
     SSRC = id_instance
-    sequence_number = 0
 
     total_len = len(data)
     log(f"Sending raw audio stream ({total_len} bytes) with SSRC: {SSRC}", "INFO")
@@ -47,11 +47,11 @@ def send_pcm_to_server(data, id_instance):
         frame = data[offset:offset + frame_bytes]
         if not frame:
             break
-        rtp_packet = create_rtp_packet(bytearray(frame), sequence_number)
+        rtp_packet = create_rtp_packet(bytearray(frame), SEQUENCE_NUMBER)
         sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
-        if sequence_number % 100 == 0:
-            log(f"📤 Enviado paquete seq {sequence_number} (raw stream)", "DEBUG")
-        sequence_number = (sequence_number + 1) % 65536
+        if SEQUENCE_NUMBER % 100 == 0:
+            log(f"📤 Enviado paquete seq {SEQUENCE_NUMBER} (raw stream)", "DEBUG")
+        SEQUENCE_NUMBER = (SEQUENCE_NUMBER + 1) % 65536
         offset += frame_bytes
         time.sleep(FRAME_SIZE / SAMPLE_RATE)
 

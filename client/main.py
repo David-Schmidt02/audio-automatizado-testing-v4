@@ -349,7 +349,7 @@ def record_audio(pulse_device):
                 if not data:
                     break
                 try:
-                    send_pcm_to_server(data, id_instance, raw=True)  # raw=True si tu función lo soporta
+                    send_pcm_to_server(data, id_instance) 
                 except Exception as e:
                     log(f"⚠️ Error enviando audio: {e}", "ERROR")
                     break
