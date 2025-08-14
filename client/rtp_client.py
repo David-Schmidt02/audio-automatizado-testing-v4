@@ -16,7 +16,7 @@ RTP_VERSION = 2
 PAYLOAD_TYPE = 96
 SSRC = None
 
-DEST_IP = "172.21.100.130"  # De momento la IP de destino es la misma que la IP del cliente
+DEST_IP = "192.168.0.82"  # De momento la IP de destino es la misma que la IP del cliente
 DEST_PORT = 6001
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

@@ -25,7 +25,7 @@ from my_logger import log
 RTP_VERSION = 2
 PAYLOAD_TYPE = 96
 
-LISTEN_IP = "172.21.100.130" # Debe ser la de la misma máquina Host 192.168.0.....
+LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001
 
 FRAME_SIZE = 160  # Samples por paquete
