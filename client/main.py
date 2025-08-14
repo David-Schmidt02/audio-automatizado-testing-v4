@@ -174,37 +174,47 @@ def create_firefox_profile_with_autoplay():
         return None
 
 
-def launch_firefox(url, sink_name):
-    """Lanza Firefox con el sink preconfigurado y autoplay habilitado."""
+def launch_firefox(url, sink_name, profile_dir=None):
+    """Lanza Firefox con el sink preconfigurado y autoplay habilitado usando un perfil ya creado."""
     global firefox_process
 
     log(f"🚀 Launching Firefox with URL: {url}", "INFO")
 
-    # Crear perfil con autoplay habilitado
-    profile_dir = create_firefox_profile_with_autoplay()
+    # --- Código anterior (comentado) ---
+    # profile_dir = create_firefox_profile_with_autoplay()
+    # if not profile_dir:
+    #     log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
+    #     profile_args = []
+    # else:
+    #     profile_args = ["--profile", profile_dir]
+
+    # Usar el perfil recibido como argumento
     if not profile_dir:
         log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
         profile_args = []
     else:
         profile_args = ["--profile", profile_dir]
-    
+
     # Configurar variables de entorno como en Go
     env = os.environ.copy()
     env["PULSE_SINK"] = sink_name
-    
+
     try:
         # Lanzar Firefox con sink preconfigurado y perfil optimizado
         cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
-        
         firefox_process = subprocess.Popen(cmd, env=env)
-
         log("✅ Firefox launched with preconfigured audio sink and autoplay", "INFO")
         return True
-        
     except Exception as e:
         log(f"❌ Failed to start Firefox: {e}", "ERROR")
         return False
 
+# --- En main() reemplaza el bloque de lanzamiento de Firefox por: ---
+
+    # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado
+    if not launch_firefox(url, sink_name, firefox_profile_dir):
+        cleanup()
+        sys.exit(1)
 
 def setup_selenium_driver(url):
     """Configura Selenium driver para control de ads."""
@@ -363,7 +373,6 @@ def record_audio(pulse_device):
         log(f"❌ Error in continuous streaming: {e}", "ERROR")
 
 
-
 def start_audio_recording(pulse_device):
     """Inicia el hilo de grabación de audio."""
     global recording_thread
@@ -391,7 +400,7 @@ def main():
     
     url = sys.argv[1]
 
-    global id_instance, output_dir
+    global id_instance, output_dir, firefox_profile_dir
     id_instance = random.randint(1000, 100000)
     output_dir = f"records-{id_instance}"
 
@@ -404,30 +413,62 @@ def main():
     if not sink_name:
         sys.exit(1)
     
-    # 3. Lanzar Firefox con sink preconfigurado
-    if not launch_firefox(url, sink_name):
+    # 3. Crear perfil de Firefox con autoplay habilitado (solo una vez)
+    firefox_profile_dir = create_firefox_profile_with_autoplay()
+    if not firefox_profile_dir:
+        log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
+    
+    # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado usando launch_firefox
+    if not launch_firefox(url, sink_name, firefox_profile_dir):
         cleanup()
         sys.exit(1)
+
+    # --- CÓDIGO ANTERIOR (comentado para referencia) ---
+    # env = os.environ.copy()
+    # env["PULSE_SINK"] = sink_name
+    # try:
+    #     cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
+    #     global firefox_process
+    #     firefox_process = subprocess.Popen(cmd, env=env)
+    #     log("✅ Firefox launched with preconfigured audio sink and autoplay", "INFO")
+    # except Exception as e:
+    #     log(f"❌ Failed to start Firefox: {e}", "ERROR")
+    #     cleanup()
+    #     sys.exit(1)
     
-    # 3.5. Esperar un poco para que Firefox inicie y luego configurar control de ads
+    # 5. Esperar un poco para que Firefox inicie y luego configurar control de ads
     print("⏳ Esperando que Firefox se inicie completamente...")
     time.sleep(5)
     
-    # Iniciar control de ads con Selenium (opcional)
+    # 6. Iniciar control de ads con Selenium (opcional), usando el mismo perfil
     print("🎯 Iniciando sistema de control de ads...")
-    if start_ad_control(url):
-        print("✅ Control de ads configurado")
+    if SELENIUM_AVAILABLE and firefox_profile_dir:
+        try:
+            firefox_options = Options()
+            firefox_options.add_argument(f"--profile={firefox_profile_dir}")
+            selenium_driver = webdriver.Firefox(options=firefox_options)
+            selenium_driver.get(url)
+            global ad_control_thread
+            ad_control_thread = threading.Thread(
+                target=ad_control_worker,
+                args=(selenium_driver,),
+                daemon=True
+            )
+            ad_control_thread.start()
+            print("✅ Control de ads configurado con Selenium")
+        except Exception as e:
+            print(f"⚠️ No se pudo iniciar Selenium con el perfil: {e}")
     else:
         print("⚠️ Continuando sin control automático de ads")
     
-    # 4. Iniciar captura y grabación de audio
+    # 7. Iniciar captura y grabación de audio
     start_audio_recording(sink_name)
     
     print("🎯 System initialized successfully!")
     print("🎵 Recording 15-second audio chunks to 'records/' directory")
     print("Press Ctrl+C to stop...")
     
-    # 5. Esperar señal de shutdown
+    # 8. Esperar señal de shutdown
     try:
         while True:
             time.sleep(1)
@@ -435,7 +476,6 @@ def main():
         pass
     
     cleanup()
-
-
+    
 if __name__ == "__main__":
     main()
