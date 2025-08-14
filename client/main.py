@@ -323,81 +323,45 @@ def start_ad_control(url):
     return True
 
 
-def record_audio(pulse_device, segment_time = 5):
-    """Graba un stream continuo dividido automáticamente en múltiples archivos usando ffmpeg segment."""
-    log(f"🎵 Starting continuous audio recording with {segment_time}s segments", "INFO")
+def record_audio(pulse_device):
+    """Graba y envía un stream continuo de audio usando ffmpeg sin segmentación."""
+    log("🎵 Starting continuous audio streaming (sin segmentación)", "INFO")
 
-    # Crear directorio si no existe
-    os.makedirs(output_dir, exist_ok=True)
-    
     try:
-        # Template para nombres de archivo - %03d será reemplazado por 001, 002, 003, etc.
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        output_template = os.path.join(output_dir, f"audio_chunk_{timestamp}_%03d.wav")
-
-        log(f"🎵 Recording continuous stream to: {output_template}", "INFO")
-
-        # Comando ffmpeg para stream continuo con segmentación automática
         cmd = [
             "ffmpeg",
-            "-y",  # Sobrescribir si existe
+            "-y",
             "-f", "pulse",
             "-i", pulse_device,
             "-acodec", "pcm_s16le",
             "-ar", "48000",
             "-ac", "1",
-            "-f", "segment",
-            "-segment_time", str(segment_time),  # Duración de cada segmento
-            "-reset_timestamps", "1",  # Resetear timestamps en cada segmento
-            "-segment_format", "wav",  # Formato de cada segmento
-            "-loglevel", "error",  # Solo mostrar errores
-            output_template
+            "-f", "wav",      # O el formato que acepte tu servidor
+            "-loglevel", "error",
+            "pipe:1"
         ]
 
-        log(f"🚀 Starting continuous recording...", "INFO")
+        log(f"🚀 Starting ffmpeg streaming...", "INFO")
 
-        # Ejecutar ffmpeg en modo continuo (no esperar a que termine)
-        process = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True)
-        
-        # Monitorear el proceso en un hilo separado
-        def monitor_ffmpeg():
-            while not stop_event.is_set() and process.poll() is None:
-                time.sleep(1)
-                
-                # Buscar archivos nuevos y enviarlos por RTP
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE) as process:
+            while not stop_event.is_set():
+                data = process.stdout.read(4096)
+                if not data:
+                    break
                 try:
-                    for filename in os.listdir(output_dir):
-                        if filename.startswith(f"audio_chunk_{timestamp}") and filename.endswith(".wav"):
-                            file_path = os.path.join(output_dir, filename)
-                            # Solo procesar archivos que no estén siendo escritos
-                            if os.path.getsize(file_path) > 1000:
-                                try:
-                                    send_pcm_to_server(file_path, id_instance)
-                                    print(f"📡 Enviado por RTP: {filename}")
-                                except Exception as rtp_error:
-                                    log(f"⚠️ Error enviando {filename}: {rtp_error}", "ERROR")
+                    send_pcm_to_server(data, id_instance, raw=True)  # raw=True si tu función lo soporta
                 except Exception as e:
-                    log(f"⚠️ Error monitoreando archivos: {e}", "ERROR")
+                    log(f"⚠️ Error enviando audio: {e}", "ERROR")
+                    break
 
-        # Iniciar monitoreo en hilo separado
-        monitor_thread = threading.Thread(target=monitor_ffmpeg, daemon=True)
-        monitor_thread.start()
-        
-        # Esperar hasta que se detenga
-        while not stop_event.is_set():
-            if process.poll() is not None:
-                print("⚠️ FFmpeg process terminated unexpectedly")
-                break
-            time.sleep(1)
-        
-        # Terminar proceso FFmpeg si sigue ejecutándose
-        if process.poll() is None:
-            log("🛑 Stopping FFmpeg...", "INFO")
-            process.terminate()
-            process.wait(timeout=5)
-            
+            if process.poll() is None:
+                log("🛑 Stopping FFmpeg...", "INFO")
+                process.terminate()
+                process.wait(timeout=5)
+
     except Exception as e:
-        log(f"❌ Error in continuous recording: {e}", "ERROR")
+        log(f"❌ Error in continuous streaming: {e}", "ERROR")
+
 
 
 def start_audio_recording(pulse_device):
