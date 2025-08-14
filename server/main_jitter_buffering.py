@@ -105,29 +105,53 @@ def udp_listener():
 
 MAX_WAIT = 0.05
 
-def iniciar_worker_cliente(client_id):
-    """Hilo que procesa paquetes en orden y escribe en WAV."""
+
+# --- Jitter buffer configurable ---
+def iniciar_worker_cliente(client_id, jitter_buffer_size):
+    """Hilo que procesa paquetes en orden y escribe en WAV usando jitter buffer real."""
     log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
+    prefill_done = False
     while True:
-        with client['lock']: # Si el worker entra antes que el listener al lock, no hace nada debido a que su buffer se encuentra vacio
+        with client['lock']:
             buffer = client['buffer']
             next_seq = client['next_seq']
 
-            # Procesar paquetes en orden
-            while next_seq in buffer:
-                payload = buffer.pop(next_seq)
-                client['wavefile'].writeframes(payload)
-                client['next_seq'] = next_seq = (next_seq + 1) % 65536
-                client['last_time'] = time.time()
+            # Esperar a que el buffer tenga al menos jitter_buffer_size paquetes antes de empezar a escribir
+            if not prefill_done:
+                if len(buffer) >= jitter_buffer_size:
+                    prefill_done = True
+                    log(f"[JitterBuffer] Cliente {client_id}: pre-llenado completado con {len(buffer)} paquetes", "INFO")
+                else:
+                    # Cierre por inactividad
+                    if not buffer and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
+                        try:
+                            client['wavefile'].close()
+                            log(f"[Worker] Cliente {client_id} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
+                        except Exception as e:
+                            log(f"[Worker] Error cerrando WAV de cliente {client_id}: {e}", "ERROR")
+                        with clients_lock:
+                            clients.pop(client_id, None)
+                        break
+                    time.sleep(0.01)
+                    continue
 
-            # Timeout: saltar paquetes perdidos
-            if buffer and time.time() - client['last_time'] > MAX_WAIT:
-                min_seq = min(buffer.keys())
-                log(f"[Worker] Timeout cliente {client_id}, saltando paquete {next_seq} (buffer: {sorted(buffer.keys())})", "WARN")
-                log(f"[Worker] Se superó MAX_WAIT para cliente {client_id} en seq={next_seq}", "ERROR")
-                client['next_seq'] = next_seq = min_seq
-                client['last_time'] = time.time()
+            # Procesar el paquete con menor sequence number disponible (ventana deslizante)
+            while buffer:
+                if next_seq in buffer:
+                    payload = buffer.pop(next_seq)
+                    client['wavefile'].writeframes(payload)
+                    client['next_seq'] = next_seq = (next_seq + 1) % 65536
+                    client['last_time'] = time.time()
+                else:
+                    # Si no está el esperado, pero hay suficientes paquetes, sacar el menor (salto por pérdida)
+                    if len(buffer) >= jitter_buffer_size or time.time() - client['last_time'] > MAX_WAIT:
+                        min_seq = min(buffer.keys())
+                        log(f"[JitterBuffer] Timeout o lag, saltando de seq={next_seq} a seq={min_seq} (buffer: {sorted(buffer.keys())})", "WARN")
+                        client['next_seq'] = next_seq = min_seq
+                        client['last_time'] = time.time()
+                    else:
+                        break
 
             # Cierre por inactividad
             if not buffer and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
@@ -136,12 +160,11 @@ def iniciar_worker_cliente(client_id):
                     log(f"[Worker] Cliente {client_id} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
                 except Exception as e:
                     log(f"[Worker] Error cerrando WAV de cliente {client_id}: {e}", "ERROR")
-                # Eliminar cliente del diccionario global
                 with clients_lock:
                     clients.pop(client_id, None)
                 break
 
-        time.sleep(0.01)  # evitar busy wait
+        time.sleep(0.01)
 
 def shutdown_handler(signum, frame):
     log("\n🛑 Shutting down server...", "WARNING")
@@ -175,9 +198,57 @@ def log_buffer_sizes_periodically():
 # Lanzar el log periódico en un hilo aparte
 threading.Thread(target=log_buffer_sizes_periodically, daemon=True).start()
 
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
+
+    JITTER_BUFFER_SIZE = 50  # Cambia este valor si quieres otro tamaño
+
+    def udp_listener_fixed_jitter():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((LISTEN_IP, LISTEN_PORT))
+        log(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}", "INFO")
+        log("🔊 Saving incoming audio streams to .wav files...", "INFO")
+        while True:
+            try:
+                data, addr = sock.recvfrom(1600)
+                try:
+                    rtp_packet = RTP()
+                    rtp_packet.fromBytearray(bytearray(data))
+                except Exception as e:
+                    log(f"Error parsing RTP packet: {e}", "ERROR")
+                    continue
+                client_id = str(rtp_packet.ssrc)
+                seq_num = rtp_packet.sequenceNumber
+                if client_id not in out_of_order_count:
+                    out_of_order_count[client_id] = 0
+                with clients_lock:
+                    if client_id not in clients:
+                        clients[client_id] = {
+                            'wavefile': create_wav_file(client_id),
+                            'lock': threading.Lock(),
+                            'buffer': dict(),
+                            'next_seq': seq_num,
+                            'last_time': time.time(),
+                        }
+                        t = threading.Thread(target=iniciar_worker_cliente, args=(client_id, JITTER_BUFFER_SIZE), daemon=True)
+                        t.start()
+                client = clients[client_id]
+                with client['lock']:
+                    if seq_num in client['buffer']:
+                        out_of_order_count[client_id] += 1
+                        log(f"[RTP] Paquete fuera de orden para cliente {client_id}: seq={seq_num} (total fuera de orden: {out_of_order_count[client_id]})", "WARN")
+                        continue
+                    client['buffer'][seq_num] = rtp_packet.payload
+                    client['last_time'] = time.time()
+            except Exception as e:
+                if isinstance(e, OSError) and str(e) == 'Bad file descriptor':
+                    break
+                print(f"Error receiving or processing packet: {e}")
+        sock.close()
+
+    udp_listener = udp_listener_fixed_jitter
 
     listener_thread = threading.Thread(target=udp_listener, daemon=True)
     listener_thread.start()
