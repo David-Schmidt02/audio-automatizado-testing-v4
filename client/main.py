@@ -352,8 +352,9 @@ def record_audio(pulse_device):
 
         with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
             try:
+                BUFFER_SIZE = 16384  # Tamaño de buffer aumentado
                 while not stop_event.is_set():
-                    data = process.stdout.read(4096)
+                    data = process.stdout.read(BUFFER_SIZE)
                     if not data:
                         break
                     try:

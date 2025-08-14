@@ -28,7 +28,7 @@ PAYLOAD_TYPE = 96
 LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001
 
-FRAME_SIZE = 160  # Samples por paquete
+FRAME_SIZE = 640  # Samples por paquete (aumentado para mayor buffer)
 SAMPLE_RATE = 48000
 SAMPLE_FORMAT = "int16"
 
