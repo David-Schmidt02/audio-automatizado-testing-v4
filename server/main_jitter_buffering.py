@@ -170,7 +170,7 @@ def log_buffer_sizes_periodically():
         all_objs = gc.get_objects()
         wav_count = sum(1 for o in all_objs if hasattr(o, 'writeframes'))
         log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "DEBUG")
-        time.sleep(5)
+        time.sleep(30)
 
 # Lanzar el log periódico en un hilo aparte
 threading.Thread(target=log_buffer_sizes_periodically, daemon=True).start()
