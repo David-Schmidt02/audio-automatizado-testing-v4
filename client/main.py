@@ -423,10 +423,12 @@ def main():
     
     # 6. Iniciar control de ads con Selenium usando el mismo perfil
     print("🎯 Iniciando sistema de control de ads...")
-    if start_ad_control(url, firefox_profile_dir):
-        print("✅ Control de ads configurado")
-    else:
-        print("⚠️ Continuando sin control automático de ads")
+    # TEMPORALMENTE DESHABILITADO - Selenium abre nueva ventana
+    # if start_ad_control(url, firefox_profile_dir):
+    #     print("✅ Control de ads configurado")
+    # else:
+    #     print("⚠️ Continuando sin control automático de ads")
+    print("⚠️ Control automático de ads deshabilitado (para evitar segunda ventana)")
     
     # 7. Iniciar captura y grabación de audio
     start_audio_recording(sink_name)
