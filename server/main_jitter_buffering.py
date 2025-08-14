@@ -1,8 +1,5 @@
 from collections import defaultdict
-import queue
-
-buffers = defaultdict(lambda: queue.Queue())         # Almacena paquetes RTP por cliente (SSRC)
-expected_seq = defaultdict(lambda: None)             # Guarda el número de secuencia esperado por cliente
+import gc
 
 clients = defaultdict() # client_id -> dict con 'wavefile', 'lock', 'buffer', 'next_seq', 'last_time'
 
@@ -160,6 +157,23 @@ def shutdown_handler(signum, frame):
 
     log("✅ Cleanup complete.", "INFO")
     sys.exit(0)
+
+# Log periódico del tamaño de buffers de todos los clientes
+
+def log_buffer_sizes_periodically():
+    while True:
+        with clients_lock:
+            for client_id, client in clients.items():
+                buffer_size = len(client['buffer'])
+                log(f"[Buffer] Cliente {client_id}: tamaño del buffer = {buffer_size}", "DEBUG")
+        # Log de objetos grandes en memoria (debug)
+        all_objs = gc.get_objects()
+        wav_count = sum(1 for o in all_objs if hasattr(o, 'writeframes'))
+        log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "DEBUG")
+        time.sleep(5)
+
+# Lanzar el log periódico en un hilo aparte
+threading.Thread(target=log_buffer_sizes_periodically, daemon=True).start()
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
