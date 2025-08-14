@@ -130,12 +130,12 @@ def shutdown_handler(signum, frame):
 
     with clients_lock:
         print("💾 Closing all WAV files...")
-        for addr, client in clients.items():
+        for client_id, client in clients.items():
             try:
                 client['wavefile'].close()
-                print(f"Closed file: {client['filename']}")
+                print(f"Closed WAV for client {client_id}")
             except Exception as e:
-                print(f"Error closing WAV file for {addr}: {e}")
+                print(f"Error closing WAV file for client {client_id}: {e}")
 
     print("✅ Cleanup complete.")
     sys.exit(0)

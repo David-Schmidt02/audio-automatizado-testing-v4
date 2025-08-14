@@ -65,13 +65,17 @@ def cleanup():
     if firefox_process:
         log("🔥 Terminating Firefox...", "INFO")
         try:
+            # Redirigir stderr para suprimir mensajes molestos
             firefox_process.terminate()
-            firefox_process.wait(timeout=5)
+            try:
+                firefox_process.communicate(timeout=5)
+            except Exception:
+                pass
         except Exception as e:
             log(f"⚠️ Failed to terminate Firefox: {e}", "ERROR")
             try:
                 firefox_process.kill()
-            except:
+            except Exception:
                 pass
     
     # Limpiar perfil temporal de Firefox
@@ -346,22 +350,27 @@ def record_audio(pulse_device):
 
         log(f"🚀 Starting ffmpeg streaming...", "INFO")
 
-        with subprocess.Popen(cmd, stdout=subprocess.PIPE) as process:
-            while not stop_event.is_set():
-                data = process.stdout.read(4096)
-                if not data:
-                    break
-                try:
-                    send_pcm_to_server(data, id_instance) 
-                except Exception as e:
-                    log(f"⚠️ Error enviando audio: {e}", "ERROR")
-                    break
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
+            try:
+                while not stop_event.is_set():
+                    data = process.stdout.read(4096)
+                    if not data:
+                        break
+                    try:
+                        send_pcm_to_server(data, id_instance)
+                    except Exception as e:
+                        log(f"⚠️ Error enviando audio: {e}", "ERROR")
+                        break
 
-            if process.poll() is None:
-                log("🛑 Stopping FFmpeg...", "INFO")
-                process.terminate()
-                process.wait(timeout=5)
-
+                if process.poll() is None:
+                    log("🛑 Stopping FFmpeg...", "INFO")
+                    process.terminate()
+                    try:
+                        process.communicate(timeout=5)
+                    except Exception:
+                        pass
+            except Exception as e:
+                log(f"❌ Error in continuous streaming: {e}", "ERROR")
     except Exception as e:
         log(f"❌ Error in continuous streaming: {e}", "ERROR")
 
