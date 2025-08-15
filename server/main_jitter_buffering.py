@@ -25,7 +25,7 @@ PAYLOAD_TYPE = 96
 LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001
 
-FRAME_SIZE = 640  # Samples por paquete (aumentado para mayor buffer)
+FRAME_SIZE = 320  # Samples por paquete (aumentado para mayor buffer)
 SAMPLE_RATE = 48000
 SAMPLE_FORMAT = "int16"
 
@@ -103,7 +103,7 @@ def udp_listener():
             print(f"Error receiving or processing packet: {e}")
     sock.close()
 
-MAX_WAIT = 0.05
+MAX_WAIT = 0.1
 
 
 # --- Jitter buffer configurable ---
@@ -116,6 +116,12 @@ def iniciar_worker_cliente(client_id, jitter_buffer_size):
         with client['lock']:
             buffer = client['buffer']
             next_seq = client['next_seq']
+
+            # Log del jitter acumulado (diferencia entre el esperado y el menor en buffer)
+            if buffer:
+                min_seq = min(buffer.keys())
+                jitter = (min_seq - next_seq) % 65536
+                log(f"[Jitter] Cliente {client_id}: jitter acumulado = {jitter} (next_seq={next_seq}, min_seq={min_seq}, buffer={sorted(buffer.keys())})", "DEBUG")
 
             # Esperar a que el buffer tenga al menos jitter_buffer_size paquetes antes de empezar a escribir
             if not prefill_done:
@@ -144,8 +150,8 @@ def iniciar_worker_cliente(client_id, jitter_buffer_size):
                     client['next_seq'] = next_seq = (next_seq + 1) % 65536
                     client['last_time'] = time.time()
                 else:
-                    # Si no está el esperado, pero hay suficientes paquetes, sacar el menor (salto por pérdida)
-                    if len(buffer) >= jitter_buffer_size or time.time() - client['last_time'] > MAX_WAIT:
+                    # Solo saltar si hay suficiente buffer y el timeout se cumple
+                    if len(buffer) >= jitter_buffer_size and time.time() - client['last_time'] > MAX_WAIT:
                         min_seq = min(buffer.keys())
                         log(f"[JitterBuffer] Timeout o lag, saltando de seq={next_seq} a seq={min_seq} (buffer: {sorted(buffer.keys())})", "WARN")
                         client['next_seq'] = next_seq = min_seq
@@ -203,7 +209,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
 
-    JITTER_BUFFER_SIZE = 50  # Cambia este valor si quieres otro tamaño
+    JITTER_BUFFER_SIZE = 60  # Cambia este valor si quieres otro tamaño
 
     def udp_listener_fixed_jitter():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
