@@ -354,7 +354,7 @@ def record_audio(pulse_device):
             "-acodec", "pcm_s16le",
             "-ar", "48000",
             "-ac", "1",
-            "-f", "wav",      # O el formato que acepte tu servidor
+            "-f", "s16le",     # ⚠️ NO "wav"
             "-loglevel", "error",
             "pipe:1"
         ]

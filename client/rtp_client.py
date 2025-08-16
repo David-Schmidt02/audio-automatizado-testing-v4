@@ -20,7 +20,7 @@ DEST_IP = "192.168.0.82"  # De momento la IP de destino es la misma que la IP de
 DEST_PORT = 6001
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-FRAME_SIZE = 160  # Samples por paquete
+FRAME_SIZE = 960  # Samples por paquete
 SAMPLE_RATE = 48000  # 48kHz
 
 CHANNELS = 1  # Mono
@@ -40,7 +40,7 @@ def send_pcm_to_server(data, id_instance):
     SSRC = id_instance
 
     total_len = len(data)
-    log(f"Sending raw audio stream ({total_len} bytes) with SSRC: {SSRC}", "INFO")
+    #log(f"Sending raw audio stream ({total_len} bytes) with SSRC: {SSRC}", "INFO")
     offset = 0
     frame_bytes = FRAME_SIZE * 2  # 2 bytes por muestra (int16)
 
@@ -54,15 +54,13 @@ def send_pcm_to_server(data, id_instance):
             log(f"📤 Enviado paquete seq {SEQUENCE_NUMBER} (raw stream)", "DEBUG")
         SEQUENCE_NUMBER = (SEQUENCE_NUMBER + 1) % 65536
         offset += frame_bytes
-        time.sleep(FRAME_SIZE / SAMPLE_RATE)
-
 
 def send_rtp_to_server(wav_path):
     global SSRC
     sequence_number = 0
     global sock
 
-    log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
+    #log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
     with wave.open(wav_path, "rb") as wf:
         while True:
             frame = wf.readframes(FRAME_SIZE)
