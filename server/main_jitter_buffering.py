@@ -34,8 +34,9 @@ CHANNELS = 1  # Mono
 clients_lock = threading.Lock()
 clients = dict()  # addr_str -> dict con 'wavefile' y 'lock'
 
-INACTIVITY_TIMEOUT = 5  # segundos de inactividad para cerrar WAV
+INACTIVITY_TIMEOUT = 10  # segundos de inactividad para cerrar WAV
 
+# Contador de paquetes fuera de orden por cliente
 out_of_order_count = {}
 
 def create_wav_file(client_id):
@@ -50,15 +51,13 @@ def create_wav_file(client_id):
 
 def udp_listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1<<20)
     sock.bind((LISTEN_IP, LISTEN_PORT))
     log(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}", "INFO")
     log("🔊 Saving incoming audio streams to .wav files...", "INFO")
     
     while True:
         try:
-            #data, addr = sock.recvfrom(1600)
-            data, addr = sock.recvfrom(4096)
+            data, addr = sock.recvfrom(1600)
             try:
                 rtp_packet = RTP()
                 rtp_packet.fromBytearray(bytearray(data))
@@ -77,16 +76,12 @@ def udp_listener():
             with clients_lock:
                 if client_id not in clients:
                     clients[client_id] = {
-                    'wavefile': create_wav_file(client_id),
-                    'lock': threading.Lock(),
-                    'buffer': dict(),
-                    'next_seq': seq_num,
-                    'last_time': time.time(),
-                    'rtp_clock': SAMPLE_RATE,          # para PCM: clock = sample rate
-                    'frame_samples_guess': FRAME_SIZE, # fallback inicial
-                    'expected_play_time': None,        # se setea tras prefill
-                    'last_ts': None,                   # último timestamp RTP usado
-                }
+                        'wavefile': create_wav_file(client_id),
+                        'lock': threading.Lock(),
+                        'buffer': dict(),
+                        'next_seq': seq_num,
+                        'last_time': time.time()
+                    }
                     # Lanzar worker
                     t = threading.Thread(target=iniciar_worker_cliente, args=(client_id,), daemon=True)
                     t.start()
@@ -99,8 +94,7 @@ def udp_listener():
                     out_of_order_count[client_id] += 1
                     log(f"[RTP] Paquete fuera de orden para cliente {client_id}: seq={seq_num} (total fuera de orden: {out_of_order_count[client_id]})", "WARN")
                     continue
-                #client['buffer'][seq_num] = rtp_packet.payload
-                client['buffer'][seq_num] = (rtp_packet.timestamp, rtp_packet.payload)
+                client['buffer'][seq_num] = rtp_packet.payload
                 client['last_time'] = time.time()
 
         except Exception as e:
@@ -109,146 +103,74 @@ def udp_listener():
             print(f"Error receiving or processing packet: {e}")
     sock.close()
 
-MAX_WAIT = 0.1
+MAX_WAIT = 0.08
 
 
-def iniciar_worker_cliente(client_id, jitter_buffer_size_packets):
-    """
-    Worker por cliente que programa la escritura usando el timestamp RTP.
-    jitter_buffer_size_packets: prefill en paquetes (p.ej. 60 => ~60*frame_ms).
-    """
+# --- Jitter buffer configurable ---
+def iniciar_worker_cliente(client_id, jitter_buffer_size):
+    """Hilo que procesa paquetes en orden y escribe en WAV usando jitter buffer real."""
     log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
     prefill_done = False
-
-    # Helpers locales para no estar mirando globals todo el tiempo
-    BYTES_PER_SAMPLE = 2 * CHANNELS
-    rtp_clock = client.get('rtp_clock', SAMPLE_RATE)
-
-    # Para estimar tamaño de frame por TS (por si cambia FRAME_SIZE del emisor)
-    ts_deltas = []
-
     while True:
-        # ----------- BLOQUE CORTO BAJO LOCK: tomar lo necesario -----------
         with client['lock']:
             buffer = client['buffer']
             next_seq = client['next_seq']
-            wf = client['wavefile']
 
-            # Inactividad => cerrar
+            # Log del jitter acumulado (diferencia entre el esperado y el menor en buffer)
+            if buffer:
+                min_seq = min(buffer.keys())
+                jitter = (min_seq - next_seq) % 65536
+                log(f"[Jitter] Cliente {client_id}: jitter acumulado = {jitter} (next_seq={next_seq}, min_seq={min_seq}, buffer={sorted(buffer.keys())})", "DEBUG")
+
+            # Esperar a que el buffer tenga al menos jitter_buffer_size paquetes antes de empezar a escribir
+            if not prefill_done:
+                if len(buffer) >= jitter_buffer_size:
+                    prefill_done = True
+                    log(f"[JitterBuffer] Cliente {client_id}: pre-llenado completado con {len(buffer)} paquetes", "INFO")
+                else:
+                    # Cierre por inactividad
+                    if not buffer and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
+                        try:
+                            client['wavefile'].close()
+                            log(f"[Worker] Cliente {client_id} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
+                        except Exception as e:
+                            log(f"[Worker] Error cerrando WAV de cliente {client_id}: {e}", "ERROR")
+                        with clients_lock:
+                            clients.pop(client_id, None)
+                        break
+                    time.sleep(0.01)
+                    continue
+
+            # Procesar el paquete con menor sequence number disponible (ventana deslizante)
+            while buffer:
+                if next_seq in buffer:
+                    payload = buffer.pop(next_seq)
+                    client['wavefile'].writeframes(payload)
+                    client['next_seq'] = next_seq = (next_seq + 1) % 65536
+                    client['last_time'] = time.time()
+                else:
+                    # Solo saltar si hay suficiente buffer y el timeout se cumple
+                    if len(buffer) >= jitter_buffer_size and time.time() - client['last_time'] > MAX_WAIT:
+                        min_seq = min(buffer.keys())
+                        log(f"[JitterBuffer] Timeout o lag, saltando de seq={next_seq} a seq={min_seq} (buffer: {sorted(buffer.keys())})", "WARN")
+                        client['next_seq'] = next_seq = min_seq
+                        client['last_time'] = time.time()
+                    else:
+                        break
+
+            # Cierre por inactividad
             if not buffer and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
                 try:
-                    wf.close()
-                    log(f"[Worker] Cliente {client_id} inactivo {INACTIVITY_TIMEOUT}s, WAV cerrado.", "INFO")
+                    client['wavefile'].close()
+                    log(f"[Worker] Cliente {client_id} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
                 except Exception as e:
                     log(f"[Worker] Error cerrando WAV de cliente {client_id}: {e}", "ERROR")
                 with clients_lock:
                     clients.pop(client_id, None)
                 break
 
-            # Prefill por paquetes (simple): esperamos a tener jitter_buffer_size_packets
-            if not prefill_done:
-                if len(buffer) >= jitter_buffer_size_packets:
-                    prefill_done = True
-                    # mapeamos el tiempo "real" a TS del primer paquete a reproducir
-                    client['expected_play_time'] = time.time()
-                    client['last_ts'] = None  # se setea al primer paquete real
-                    log(f"[JitterBuffer] Cliente {client_id}: pre-llenado con {len(buffer)} paquetes", "INFO")
-                else:
-                    # no hay suficiente prefill aún
-                    pass
-
-            # Si ya hay prefill, intentamos tomar el paquete esperado
-            pkt = None
-            if prefill_done and next_seq in buffer:
-                pkt = buffer.pop(next_seq)  # (ts, payload)
-                client['next_seq'] = (next_seq + 1) % 65536
-                client['last_time'] = time.time()
-
-        # ------------------- FUERA DEL LOCK: procesar pkt -------------------
-        if not prefill_done:
-            time.sleep(0.005)
-            continue
-
-        if pkt is None:
-            # No está el paquete esperado aún.
-            # Política simple: si estamos muy atrasados respecto a expected_play_time, avanzamos (silencio).
-            now = time.time()
-            if client['expected_play_time'] is not None and (now - client['expected_play_time']) > MAX_WAIT:
-                # Estimar duración de frame para “llenar” el hueco con silencio
-                frame_samples = estimate_frame_samples(client, ts_deltas, rtp_clock)
-                silence = b'\x00' * (frame_samples * BYTES_PER_SAMPLE)
-                try:
-                    wf.writeframes(silence)
-                except Exception as e:
-                    log(f"[Worker] Error escribiendo silencio WAV cliente {client_id}: {e}", "ERROR")
-                # Avanzamos expected_play_time
-                client['expected_play_time'] = now
-                # También avanzamos last_ts “virtualmente”
-                if client['last_ts'] is None:
-                    client['last_ts'] = 0
-                client['last_ts'] = (client['last_ts'] + frame_samples) % (1<<32)
-            else:
-                time.sleep(0.001)
-            continue
-
-        # Tenemos un paquete real
-        ts, payload = pkt
-
-        # Estimar frame_samples a partir de TS consecutivos
-        if client['last_ts'] is not None:
-            delta_ts = (ts - client['last_ts']) & 0xFFFFFFFF
-            if 0 < delta_ts < rtp_clock * 0.25:  # ignora saltos demasiado grandes
-                ts_deltas.append(delta_ts)
-                if len(ts_deltas) > 50:
-                    ts_deltas.pop(0)
-        frame_samples = estimate_frame_samples(client, ts_deltas, rtp_clock)
-
-        # Programar la salida respecto del clock del emisor
-        if client['expected_play_time'] is None:
-            client['expected_play_time'] = time.time()
-
-        # ¿Estamos adelantados o atrasados?
-        # “Tiempo ideal” para este frame: avanzar frame_samples/rtp_clock desde expected_play_time
-        ideal_next_time = client['expected_play_time'] + (frame_samples / float(rtp_clock))
-        now = time.time()
-        drift = ideal_next_time - now
-
-        # Si vamos adelantados, esperamos; si vamos atrasados mucho, escribimos y reseteamos
-        if drift > 0:
-            time.sleep(drift)
-            client['expected_play_time'] = ideal_next_time
-        else:
-            # Atraso: no dormimos; si el atraso es muy grande, reanclamos el reloj
-            if -drift > MAX_WAIT:
-                client['expected_play_time'] = now
-
-        # Escribimos el frame
-        try:
-            wf.writeframes(payload)
-        except Exception as e:
-            log(f"[Worker] Error escribiendo WAV cliente {client_id}: {e}", "ERROR")
-
-        # Actualizamos TS
-        client['last_ts'] = ts
-
-
-def estimate_frame_samples(client, ts_deltas, rtp_clock):
-    """
-    Devuelve cuántas muestras hay por frame.
-    - Si hay deltas de TS, usa la mediana (robusto al ruido).
-    - Si no, cae al frame_samples_guess inicial.
-    """
-    if ts_deltas:
-        sorted_d = sorted(ts_deltas)
-        median = sorted_d[len(sorted_d)//2]
-        # Redondeo a múltiplos “comunes” para estabilidad (480/960/1920)
-        common = [240, 320, 480, 960, 1920]
-        closest = min(common, key=lambda x: abs(x - median))
-        client['frame_samples_guess'] = closest
-        return closest
-    return client.get('frame_samples_guess', 960)
-
+        time.sleep(0.01)
 
 def shutdown_handler(signum, frame):
     log("\n🛑 Shutting down server...", "WARNING")
@@ -287,16 +209,17 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
 
-    JITTER_BUFFER_SIZE = 60  # Cambia este valor si quieres otro tamaño
+    JITTER_BUFFER_SIZE = 20  # Cambia este valor si quieres otro tamaño
 
     def udp_listener_fixed_jitter():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1<<20)
         sock.bind((LISTEN_IP, LISTEN_PORT))
         log(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}", "INFO")
         log("🔊 Saving incoming audio streams to .wav files...", "INFO")
         while True:
             try:
-                data, addr = sock.recvfrom(1600)
+                data, addr = sock.recvfrom(4096)
                 try:
                     rtp_packet = RTP()
                     rtp_packet.fromBytearray(bytearray(data))
@@ -310,16 +233,12 @@ if __name__ == "__main__":
                 with clients_lock:
                     if client_id not in clients:
                         clients[client_id] = {
-                        'wavefile': create_wav_file(client_id),
-                        'lock': threading.Lock(),
-                        'buffer': dict(),
-                        'next_seq': seq_num,
-                        'last_time': time.time(),
-                        'rtp_clock': SAMPLE_RATE,          # para PCM: clock = sample rate
-                        'frame_samples_guess': FRAME_SIZE, # fallback inicial
-                        'expected_play_time': None,        # se setea tras prefill
-                        'last_ts': None,                   # último timestamp RTP usado
-                    }
+                            'wavefile': create_wav_file(client_id),
+                            'lock': threading.Lock(),
+                            'buffer': dict(),
+                            'next_seq': seq_num,
+                            'last_time': time.time(),
+                        }
                         t = threading.Thread(target=iniciar_worker_cliente, args=(client_id, JITTER_BUFFER_SIZE), daemon=True)
                         t.start()
                 client = clients[client_id]
@@ -328,8 +247,7 @@ if __name__ == "__main__":
                         out_of_order_count[client_id] += 1
                         log(f"[RTP] Paquete fuera de orden para cliente {client_id}: seq={seq_num} (total fuera de orden: {out_of_order_count[client_id]})", "WARN")
                         continue
-                    #client['buffer'][seq_num] = rtp_packet.payload
-                    client['buffer'][seq_num] = (rtp_packet.timestamp, rtp_packet.payload)
+                    client['buffer'][seq_num] = rtp_packet.payload
                     client['last_time'] = time.time()
             except Exception as e:
                 if isinstance(e, OSError) and str(e) == 'Bad file descriptor':
