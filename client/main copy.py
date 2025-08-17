@@ -191,37 +191,43 @@ def create_firefox_profile_with_autoplay():
 
 
 def launch_firefox(url, sink_name, profile_dir=None):
-    """Lanza Firefox con el sink preconfigurado y perfil ya creado."""
-    global firefox_process
+    """Lanza Firefox con el sink preconfigurado y perfil ya creado -> Desde Selenium."""
+    global driver
 
     log(f"🚀 Launching Firefox with URL: {url}", "INFO")
 
-    # Usar el perfil recibido como parámetro (creado en main)
-    if not profile_dir:
-        log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
-        profile_args = []
+    # Configurar las opciones
+    options = Options()
+    if profile_dir:
+        options.profile = profile_dir
     else:
-        profile_args = ["--profile", profile_dir]
-    
+        log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
+
     # Configurar variables de entorno
     env = os.environ.copy()
     env["PULSE_SINK"] = sink_name
-    
-    try:
-        # Lanzar Firefox con sink preconfigurado y perfil optimizado
-        cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
-        
-        firefox_process = subprocess.Popen(cmd, env=env)
 
-        log("✅ Firefox launched with preconfigured audio sink and autoplay", "INFO")
+    try:
+        # Definir servicio con entorno modificado
+        service = Service(
+            executable_path="/usr/bin/geckodriver",
+            env=env
+        )
+
+        # Lanzar Firefox controlado por Selenium
+        driver = setup_selenium_driver(env, profile_dir)
+        log("🌐 Abriendo URL con Selenium...", "INFO")
+        driver.get(url)
+
+        log("✅ Firefox launched with preconfigured audio sink and Selenium", "INFO")
         return True
-        
+
     except Exception as e:
         log(f"❌ Failed to start Firefox: {e}", "ERROR")
         return False
 
 
-def setup_selenium_driver(url, profile_dir=None):
+def setup_selenium_driver(env, profile_dir=None):
     """Configura Selenium driver para control de ads usando perfil existente."""
     global selenium_driver
     
@@ -249,10 +255,7 @@ def setup_selenium_driver(url, profile_dir=None):
         firefox_options.set_preference("media.navigator.permission.disabled", True)  # Sin permisos de medios
         
         # Inicializar driver
-        selenium_driver = webdriver.Firefox(options=firefox_options)
-
-        log("🌐 Abriendo URL con Selenium...", "INFO")
-        selenium_driver.get(url)
+        selenium_driver = webdriver.Firefox(options=firefox_options, env=env)
 
         log("✅ Selenium driver configurado exitosamente", "INFO")
         return selenium_driver
