@@ -192,7 +192,7 @@ def create_firefox_profile_with_autoplay():
 
 def launch_firefox(url, sink_name, profile_dir=None):
     """Lanza Firefox con el sink preconfigurado y perfil ya creado -> Desde Selenium."""
-    global driver
+    global selenium_driver
 
     log(f"🚀 Launching Firefox with URL: {url}", "INFO")
 
@@ -215,9 +215,9 @@ def launch_firefox(url, sink_name, profile_dir=None):
         )
 
         # Lanzar Firefox controlado por Selenium
-        driver = setup_selenium_driver(service, profile_dir)
+        selenium_driver = setup_selenium_driver(service, profile_dir)
         log("🌐 Abriendo URL con Selenium...", "INFO")
-        driver.get(url)
+        selenium_driver.get(url)
 
         log("✅ Firefox launched with preconfigured audio sink and Selenium", "INFO")
         return True
