@@ -158,8 +158,7 @@ def main():
         print("✅ Control de ads configurado")
     else:
         print("⚠️ Continuando sin control automático de ads")
-    print("⚠️ Control automático de ads deshabilitado (para evitar segunda ventana)")
-    
+
     # 7. Iniciar captura y grabación de audio
     start_audio_recording(sink_name)
     
