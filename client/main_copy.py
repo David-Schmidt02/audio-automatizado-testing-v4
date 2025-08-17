@@ -229,7 +229,6 @@ def launch_firefox(url, sink_name, profile_dir=None):
 
 def setup_selenium_driver(service, profile_dir=None):
     """Configura Selenium driver para control de ads usando perfil existente."""
-    global selenium_driver
     
     if not SELENIUM_AVAILABLE:
         log("⚠️ Selenium no disponible - omitiendo control de ads", "WARNING")
@@ -255,7 +254,8 @@ def setup_selenium_driver(service, profile_dir=None):
         firefox_options.set_preference("media.navigator.permission.disabled", True)  # Sin permisos de medios
         
         # Inicializar driver
-        selenium_driver = webdriver.Firefox(options=firefox_options, service=service)
+        log("🌐 Iniciando Selenium WebDriver con Firefox...", "INFO")
+        selenium_driver = webdriver.Firefox(service=service, options=firefox_options)
 
         log("✅ Selenium driver configurado exitosamente", "INFO")
         return selenium_driver
