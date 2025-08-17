@@ -9,24 +9,15 @@ from rtp import RTP, PayloadType
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-
+from config import FRAME_SIZE, RTP_VERSION, PAYLOAD_TYPE, SAMPLE_FORMAT
 
 # Configuración RTP
-RTP_VERSION = 2
-PAYLOAD_TYPE = 96
 SSRC = None
 
 DEST_IP = "192.168.0.82"  # De momento la IP de destino es la misma que la IP del cliente
 DEST_PORT = 6001
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-FRAME_SIZE = 960  # Samples por paquete
-SAMPLE_RATE = 48000  # 48kHz
-
-CHANNELS = 1  # Mono
-SAMPLE_FORMAT = "int16"
-
-SSRC = None  # SSRC 
 SEQUENCE_NUMBER = 0  # Número de secuencia para RTP
 
 
@@ -85,7 +76,7 @@ def create_rtp_packet(payload, sequence_number):
     timestamp = sequence_number * FRAME_SIZE  # Timestamp basado en samples procesados
     
     rtp_packet = RTP(
-        version=2,  # Usar valor directo 2
+        version=RTP_VERSION,  # Usar valor directo 2
         payloadType=PayloadType.DYNAMIC_96,  # Usar PayloadType enum
         sequenceNumber=sequence_number,      # camelCase
         timestamp=timestamp % 2**32,         # Timestamp predecible basado en samples

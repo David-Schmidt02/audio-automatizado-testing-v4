@@ -28,6 +28,7 @@ def log_mem_and_objects_periodically():
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
+from config import BUFFER_SIZE
 
 # Importaciones para Selenium (control de ads)
 try:
@@ -363,7 +364,7 @@ def record_audio(pulse_device):
 
         with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
             try:
-                BUFFER_SIZE = 16384  # Tamaño de buffer aumentado
+                #BUFFER_SIZE = 16384  # Tamaño de buffer aumentado
                 while not stop_event.is_set():
                     data = process.stdout.read(BUFFER_SIZE)
                     if not data:
@@ -385,7 +386,6 @@ def record_audio(pulse_device):
                 log(f"❌ Error in continuous streaming: {e}", "ERROR")
     except Exception as e:
         log(f"❌ Error in continuous streaming: {e}", "ERROR")
-
 
 
 def start_audio_recording(pulse_device):

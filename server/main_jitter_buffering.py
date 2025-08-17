@@ -17,24 +17,16 @@ from rtp import RTP
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
+from config import BUFFER_SIZE, FRAME_SIZE, SAMPLE_RATE, CHANNELS, RTP_VERSION, PAYLOAD_TYPE, SAMPLE_FORMAT
 
 # Configuración RTP
-RTP_VERSION = 2
-PAYLOAD_TYPE = 96
-
 LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001
-
-FRAME_SIZE = 960  # Samples por paquete (aumentado para mayor buffer)
-SAMPLE_RATE = 48000
-SAMPLE_FORMAT = "int16"
-
-CHANNELS = 1  # Mono
 
 clients_lock = threading.Lock()
 clients = dict()  # addr_str -> dict con 'wavefile' y 'lock'
 
-INACTIVITY_TIMEOUT = 10  # segundos de inactividad para cerrar WAV
+INACTIVITY_TIMEOUT = 5  # segundos de inactividad para cerrar WAV
 
 # Contador de paquetes fuera de orden por cliente
 out_of_order_count = {}
@@ -57,7 +49,7 @@ def udp_listener():
     
     while True:
         try:
-            data, addr = sock.recvfrom(1600)
+            data, addr = sock.recvfrom(BUFFER_SIZE)
             try:
                 rtp_packet = RTP()
                 rtp_packet.fromBytearray(bytearray(data))
@@ -219,7 +211,7 @@ if __name__ == "__main__":
         log("🔊 Saving incoming audio streams to .wav files...", "INFO")
         while True:
             try:
-                data, addr = sock.recvfrom(4096)
+                data, addr = sock.recvfrom(BUFFER_SIZE)
                 try:
                     rtp_packet = RTP()
                     rtp_packet.fromBytearray(bytearray(data))
@@ -262,12 +254,3 @@ if __name__ == "__main__":
 
     # Mantener el programa vivo esperando señal para cerrar
     signal.pause()
-
-"""
-Cambios 
-    - Escritura en tiempo real: cada paquete se escribe directamente al .wav sin esperar 240 paquetes.
-    - Worker por cliente: procesa paquetes de forma independiente.
-    - Buffer con lock: evita problemas de concurrencia.
-    - Timeout: paquetes que no llegan se “saltan” para no acumular memoria.
-    - Diccionario clients: encapsula todo por cliente (wavefile, buffer, lock, next_seq, last_time).
-"""
