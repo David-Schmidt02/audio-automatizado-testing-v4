@@ -146,7 +146,7 @@ class AudioClientSession:
         
         for selector in ad_selectors:
             try:
-                skip_buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                skip_buttons = self.selenium_driver.find_elements(By.CSS_SELECTOR, selector)
                 for button in skip_buttons:
                     if button.is_displayed() and button.is_enabled():
                         button.click()
@@ -187,7 +187,7 @@ class AudioClientSession:
         # Iniciar hilo de control de ads
         self.ad_control_thread = threading.Thread(
             target=self.ads_control_worker,
-            args=(self.selenium_driver,),
+            args=(),
             daemon=True
         )
         self.ad_control_thread.start()
