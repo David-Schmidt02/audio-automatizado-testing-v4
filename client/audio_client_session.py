@@ -187,7 +187,7 @@ class AudioClientSession:
         # Iniciar hilo de control de ads
         self.ad_control_thread = threading.Thread(
             target=self.ads_control_worker,
-            args=(self.driver,),
+            args=(self.selenium_driver,),
             daemon=True
         )
         self.ad_control_thread.start()
