@@ -46,9 +46,7 @@ class AudioClientSession:
             log(f"❌ Failed to create audio sink: {e}", "ERROR")
             return None
 
-
-    def create_firefox_profile(self):
-        """Crea un directorio temporal para el perfil de Firefox."""
+    def create_firefox_profile_for_snap(self):
         """Crea un directorio de perfil de Firefox en ~/snap/firefox/common/."""
         base_dir = os.path.expanduser("~/snap/firefox/common/")
         os.makedirs(base_dir, exist_ok=True)
@@ -56,7 +54,20 @@ class AudioClientSession:
         profile_name = f"firefox-autoplay-{random.randint(10000, 99999)}"
         self.firefox_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.firefox_profile_dir, exist_ok=True)
-            # Crear archivo de preferencias
+
+    def create_firefox_profile_for_classic(self):
+        """Crea un directorio de perfil de Firefox en ~/.mozilla/firefox/."""
+        base_dir = os.path.expanduser("~/.mozilla/firefox/")
+        os.makedirs(base_dir, exist_ok=True)
+        # Nombre único para el perfil
+        profile_name = f"firefox-autoplay-{random.randint(10000, 99999)}"
+        self.firefox_profile_dir = os.path.join(base_dir, profile_name)
+        os.makedirs(self.firefox_profile_dir, exist_ok=True)
+
+    def create_firefox_profile(self):
+        """Crea un directorio temporal para el perfil de Firefox."""
+        # self.create_firefox_profile_for_classic() -> Se debe desinstalar la version snap e instalar la classic
+        self.create_firefox_profile_for_snap()
         prefs_js = os.path.join(self.firefox_profile_dir, "prefs.js")
         
         preferences = [
@@ -81,7 +92,6 @@ class AudioClientSession:
             self.firefox_profile_dir = None
             log(f"❌ Error creando perfil: {e}", "ERROR")
             return None
-
 
     def launch_firefox(self, url):
         """Lanza Firefox con el sink preconfigurado y perfil ya creado."""
