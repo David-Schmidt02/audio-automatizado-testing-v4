@@ -65,24 +65,14 @@ cd audio-automatizado-testing-v4
 ### 4. Instalar dependencias del sistema
 
 ```bash
-sudo apt install -y firefox pulseaudio-utils ffmpeg
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 ```
 
 ### 5. Instalar dependencias Python
 
 ```bash
 pip install -r requirements.txt
-```
-
----
-
-## 🚦 Instalación Servidor (Linux/Windows)
-
-1. Instala Python 3.12+
-2. Instala dependencias Python:
-
-```bash
-pip install rtp wave
 ```
 
 ---
