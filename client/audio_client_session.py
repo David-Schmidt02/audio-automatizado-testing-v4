@@ -49,7 +49,13 @@ class AudioClientSession:
 
     def create_firefox_profile(self):
         """Crea un directorio temporal para el perfil de Firefox."""
-        self.firefox_profile_dir = tempfile.mkdtemp(prefix="firefox-autoplay-")
+        """Crea un directorio de perfil de Firefox en ~/snap/firefox/common/."""
+        base_dir = os.path.expanduser("~/snap/firefox/common/")
+        os.makedirs(base_dir, exist_ok=True)
+        # Nombre único para el perfil
+        profile_name = f"firefox-autoplay-{random.randint(10000, 99999)}"
+        self.firefox_profile_dir = os.path.join(base_dir, profile_name)
+        os.makedirs(self.firefox_profile_dir, exist_ok=True)
             # Crear archivo de preferencias
         prefs_js = os.path.join(self.firefox_profile_dir, "prefs.js")
         
