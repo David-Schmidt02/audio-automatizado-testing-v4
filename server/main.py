@@ -20,7 +20,7 @@ from my_logger import log
 from config import BUFFER_SIZE, FRAME_SIZE, SAMPLE_RATE, CHANNELS, RTP_VERSION, PAYLOAD_TYPE, SAMPLE_FORMAT
 
 # Configuración RTP
-LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
+LISTEN_IP = "172.21.100.130" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001
 
 clients_lock = threading.Lock()
