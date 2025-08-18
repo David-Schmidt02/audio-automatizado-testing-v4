@@ -52,33 +52,26 @@ sudo apt install -y \
 echo "✅ Dependencias del sistema instaladas"
 
 
-# Eliminar versión Snap de Firefox si existe
-echo "=== Eliminando versión Snap de Firefox (si existe) ==="
-if snap list | grep -q firefox; then
-    sudo snap remove firefox
-fi
-
-# Eliminar paquete de transición de APT
-echo "=== Eliminando paquete de transición de Firefox (APT) ==="
-sudo apt purge -y firefox
-
-# Agregar PPA oficial de Mozilla
-echo "=== Agregando PPA oficial de Mozilla ==="
-sudo add-apt-repository -y ppa:mozillateam/ppa
-sudo apt update
-
-# Priorizar el PPA sobre Snap
-echo "=== Priorizando PPA de Mozilla para Firefox ==="
-echo 'Package: firefox*' | sudo tee /etc/apt/preferences.d/mozilla-firefox
-echo 'Pin: release o=LP-PPA-mozillateam' | sudo tee -a /etc/apt/preferences.d/mozilla-firefox
-echo 'Pin-Priority: 1001' | sudo tee -a /etc/apt/preferences.d/mozilla-firefox
-
-# Instalar Firefox clásico desde el PPA
-echo "=== Instalando Firefox clásico desde el PPA ==="
-sudo apt install -y firefox
-
 echo "Firefox instalado correctamente:"
-firefox --version
+
+# --- Manejo moderno de Firefox (Snap o APT) ---
+echo "=== Verificando Firefox ==="
+if command -v firefox &> /dev/null; then
+    echo "Firefox ya está instalado:"
+    firefox --version
+    echo "Actualizando Firefox..."
+    if snap list | grep -q firefox; then
+        sudo snap refresh firefox
+    else
+        sudo apt update
+        sudo apt install --only-upgrade -y firefox
+    fi
+else
+    echo "Firefox no está instalado. Instalando versión Snap..."
+    sudo snap install firefox
+    echo "Firefox instalado:"
+    firefox --version
+fi
 
 # Instalar GeckoDriver para Firefox + Selenium
 echo "=== Configurando GeckoDriver para Firefox ==="
