@@ -1,7 +1,4 @@
 import socket
-import struct
-import time
-import wave
 import os
 import sys
 from rtp import RTP, PayloadType
@@ -9,19 +6,16 @@ from rtp import RTP, PayloadType
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import FRAME_SIZE, RTP_VERSION, PAYLOAD_TYPE, SAMPLE_FORMAT
-
+from config import FRAME_SIZE, RTP_VERSION, DEST_IP, DEST_PORT
+# PAYLOAD_TYPE termina sobreescribiendose con el de la clase de la libreria rtp
 # Configuración RTP
 SSRC = None
-
-DEST_IP = "172.21.100.130"  # De momento la IP de destino es la misma que la IP del cliente
-DEST_PORT = 6001
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 SEQUENCE_NUMBER = 0  # Número de secuencia para RTP
 
 
-def send_pcm_to_server(data, id_instance):
+def send_rtp_stream_to_server (data, id_instance):
     """
     Envía un bloque de audio PCM/WAV en tiempo real al servidor RTP.
     """
@@ -45,21 +39,6 @@ def send_pcm_to_server(data, id_instance):
             log(f"📤 Enviado paquete seq {SEQUENCE_NUMBER} (raw stream)", "DEBUG")
         SEQUENCE_NUMBER = (SEQUENCE_NUMBER + 1) % 65536
         offset += frame_bytes
-
-def send_rtp_to_server(wav_path):
-    global SSRC
-    sequence_number = 0
-    global sock
-
-    #log(f"Sending audio file: {wav_path} with SSRC: {SSRC}", "INFO")
-    with wave.open(wav_path, "rb") as wf:
-        while True:
-            frame = wf.readframes(FRAME_SIZE)
-            if not frame:
-                break
-            rtp_packet = create_rtp_packet(frame, sequence_number)
-            sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
-            sequence_number += 1
 
 
 def create_rtp_packet(payload, sequence_number):

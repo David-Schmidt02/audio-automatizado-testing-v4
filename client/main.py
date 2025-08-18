@@ -6,9 +6,7 @@ import threading
 import subprocess
 
 import random
-from rtp_client import send_pcm_to_server
-import gc
-import tracemalloc
+from rtp_client import send_rtp_stream_to_server 
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
@@ -57,7 +55,7 @@ def record_audio(pulse_device):
                     if not data:
                         break
                     try:
-                        send_pcm_to_server(data, id_instance)
+                        send_rtp_stream_to_server (data, id_instance)
                     except Exception as e:
                         log(f"⚠️ Error enviando audio: {e}", "ERROR")
                         break
