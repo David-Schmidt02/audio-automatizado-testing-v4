@@ -46,7 +46,7 @@ sudo apt install -y \
     wget \
     unzip \
     curl \
-    netcat \
+    netcat-openbsd \
     net-tools
 
 echo "✅ Dependencias del sistema instaladas"
