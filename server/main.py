@@ -32,8 +32,11 @@ INACTIVITY_TIMEOUT = 5  # segundos de inactividad para cerrar WAV
 out_of_order_count = {}
 
 def create_wav_file(client_id):
-    """Crea un WAV nuevo para el cliente."""
-    name_wav = f"record-{time.strftime('%Y%m%d-%H%M%S')}-{client_id}.wav"
+    """Crea un WAV nuevo para el cliente en un directorio propio dentro de 'records'."""
+    base_dir = "records"
+    client_dir = os.path.join(base_dir, str(client_id))
+    os.makedirs(client_dir, exist_ok=True)
+    name_wav = os.path.join(client_dir, f"record-{time.strftime('%Y%m%d-%H%M%S')}-{client_id}.wav")
     wf = wave.open(name_wav, "wb")
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(2)
@@ -108,7 +111,6 @@ def iniciar_worker_cliente(client_id, jitter_buffer_size):
     log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
     prefill_done = False
-    crear_directorio_cliente(client_id)
     while True:
         with client['lock']:
             buffer = client['buffer']
