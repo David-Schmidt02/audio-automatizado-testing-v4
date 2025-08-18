@@ -72,6 +72,7 @@ class AudioClientSession:
             log(f"📁 Perfil Firefox creado: {self.firefox_profile_dir}", "INFO")
             return self.firefox_profile_dir
         except Exception as e:
+            self.firefox_profile_dir = None
             log(f"❌ Error creando perfil: {e}", "ERROR")
             return None
 
