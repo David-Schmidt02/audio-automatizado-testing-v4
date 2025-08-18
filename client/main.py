@@ -135,7 +135,6 @@ def main():
     start_audio_recording(sink_name)
     
     print("🎯 System initialized successfully!")
-    print("🎵 Recording 15-second audio chunks to 'records/' directory")
     print("Press Ctrl+C to stop...")
     
     # 8. Esperar señal de shutdown

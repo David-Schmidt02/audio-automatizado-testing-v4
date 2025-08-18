@@ -97,6 +97,10 @@ def udp_listener():
 
 MAX_WAIT = 0.08
 
+def crear_directorio_cliente(client_id, base_dir="records"):
+    path = os.path.join(base_dir, str(client_id))
+    os.makedirs(path, exist_ok=True)
+    return path
 
 # --- Jitter buffer configurable ---
 def iniciar_worker_cliente(client_id, jitter_buffer_size):
@@ -104,6 +108,7 @@ def iniciar_worker_cliente(client_id, jitter_buffer_size):
     log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
     prefill_done = False
+    crear_directorio_cliente(client_id)
     while True:
         with client['lock']:
             buffer = client['buffer']
