@@ -147,7 +147,7 @@ def main():
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
-    XVFB_DISPLAY = send_channel_metadata(channel_name, id_instance)
+    XVFB_DISPLAY = send_channel_metadata_and_return_display(channel_name, id_instance)
     log(f"✅ Canal extraído: {channel_name}", "INFO")
     log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
     xvfb_proc = start_xvfb(XVFB_DISPLAY)
