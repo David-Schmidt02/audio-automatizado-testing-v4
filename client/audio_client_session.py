@@ -93,7 +93,7 @@ class AudioClientSession:
             log(f"❌ Error creando perfil: {e}", "ERROR")
             return None
 
-    def launch_firefox(self, url):
+    def launch_firefox(self, url, display_num):
         """Lanza Firefox con el sink preconfigurado y perfil ya creado."""
 
         log(f"🚀 Launching Firefox with URL: {url}", "INFO")
@@ -108,6 +108,7 @@ class AudioClientSession:
         # Configurar variables de entorno
         env = os.environ.copy()
         env["PULSE_SINK"] = self.sink_name
+        env["DISPLAY"] = display_num
 
         try:
             # Lanzar Firefox con sink preconfigurado y perfil optimizado

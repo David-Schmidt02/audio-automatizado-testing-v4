@@ -11,15 +11,17 @@ from rtp_client import send_rtp_stream_to_server
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import BUFFER_SIZE, DEST_IP, DEST_PORT, METADATA_PORT
+from config import BUFFER_SIZE, DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY
 
 from client.audio_client_session import AudioClientSession
+from xvfb_manager import start_xvfb, stop_xvfb
 
 # Variables globales para cleanup
 id_instance = random.randint(1000, 100000)
 
 # Controlador de sesión de audio
 audio_client_session = AudioClientSession(id_instance)
+
 
 
 def signal_handler(sig, frame):
@@ -96,9 +98,18 @@ def send_channel_metadata(channel_name, ssrc):
     import json
     msg = json.dumps({"ssrc": ssrc, "channel": str(channel_name)})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    log(f"📡 Enviando metadata: {msg}", "ERROR")
+    log(f"📡 Enviando metadata: {msg}", "INFO")
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
-    sock.close()
+    try:
+        data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
+        display_num = int(data.decode())
+        log(f"✅ Display asignado por el servidor: :{display_num}", "INFO")
+        XVFB_DISPLAY = f":{display_num}"
+    except socket.timeout:
+        log("❌ No se recibió respuesta del servidor para el display", "ERROR")
+        return None
+    finally:
+        sock.close()
     
 def main():
     """Función principal."""
@@ -128,9 +139,12 @@ def main():
     if not firefox_profile_dir:
         audio_client_session.cleanup()
         log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
+
+    # 3.1 Crear Display de XVFB con el numero asignado por el servidor
+    xvfb_proc = start_xvfb(XVFB_DISPLAY)
     
     # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado
-    if not audio_client_session.launch_firefox(url):
+    if not audio_client_session.launch_firefox(url, XVFB_DISPLAY):
         audio_client_session.cleanup()
         sys.exit(1)
     
@@ -160,6 +174,7 @@ def main():
         pass
     
     audio_client_session.cleanup()
+    stop_xvfb(xvfb_proc)
 
 
 if __name__ == "__main__":

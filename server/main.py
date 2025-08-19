@@ -44,15 +44,17 @@ def metadata_listener(ip, port):
             channel = msg['channel']
             channel_map[ssrc] = channel
             log(f"📡 Metadata received: {ssrc} -> {channel}", "ERROR")
+            # Asignar display: cantidad de canales activos + 10 (puedes ajustar el offset)
+            display_num = len(channel_map) + 10
+            sock.sendto(str(display_num).encode(), addr)
         except Exception as e:
             print(f"Error parsing metadata: {e}")
-
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
 
-    metadata_thread = threading.Thread(target=metadata_listener, args=(LISTEN_IP,METADATA_PORT,), daemon=True)
+    metadata_thread = threading.Thread(target=metadata_listener, args=(LISTEN_IP, METADATA_PORT,), daemon=True)
     metadata_thread.start()
 
     log_buffer_size_thread = threading.Thread(target=log_buffer_sizes_periodically, daemon=True)
