@@ -112,7 +112,7 @@ class AudioClientSession:
 
         try:
             # Lanzar Firefox con sink preconfigurado y perfil optimizado
-            cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
+            cmd = ["firefox", "--headless" "--new-instance", "--new-window"] + profile_args + [url]
             
             self.firefox_process = subprocess.Popen(cmd, env=env)
 
