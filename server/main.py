@@ -2,14 +2,19 @@ import threading
 import signal
 import sys
 import os
+import socket
+import threading
+import json
 
-from utils import log_buffer_sizes_periodically
+from utils import log_buffer_sizes_periodically, channel_map
 from rtp_server import udp_listener_fixed_jitter
 from client_manager import clients_lock, clients
+from metadata import channel_map
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
+from config import METADATA_PORT, LISTEN_IP
 
 def shutdown_handler(signum, frame):
     log("\n🛑 Shutting down server...", "WARNING")
@@ -27,9 +32,26 @@ def shutdown_handler(signum, frame):
     sys.exit(0)
 
 
+def metadata_listener(ip, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((ip, port))
+    while True:
+        data, addr = sock.recvfrom(1024)
+        try:
+            msg = json.loads(data.decode())
+            ssrc = str(msg['ssrc'])
+            channel = msg['channel']
+            channel_map[ssrc] = channel
+        except Exception as e:
+            print(f"Error parsing metadata: {e}")
+
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
+
+    metadata_thread = threading.Thread(target=metadata_listener, args=(LISTEN_IP,METADATA_PORT,), daemon=True)
+    metadata_thread.start()
 
     log_buffer_size_thread = threading.Thread(target=log_buffer_sizes_periodically, daemon=True)
     log_buffer_size_thread.start()

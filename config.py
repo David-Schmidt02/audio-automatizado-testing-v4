@@ -10,6 +10,7 @@ SAMPLE_FORMAT = "int16"
 # Dirección IP y puerto del servidor RTP
 DEST_IP = "172.21.100.130"  
 DEST_PORT = 6001
+METADATA_PORT = 6002
 # Dirección IP y puerto del cliente RTP
 LISTEN_IP = "172.21.100.130" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001 # Puerto de escucha del cliente RTP, debe ser el mismo que DEST_PORT 

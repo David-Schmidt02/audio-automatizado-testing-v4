@@ -11,7 +11,7 @@ from rtp_client import send_rtp_stream_to_server
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import BUFFER_SIZE
+from config import BUFFER_SIZE, DEST_IP, DEST_PORT, METADATA_PORT
 
 from client.audio_client_session import AudioClientSession
 
@@ -49,7 +49,6 @@ def record_audio(pulse_device):
 
         with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
             try:
-                #BUFFER_SIZE = 16384  # Tamaño de buffer aumentado
                 while not audio_client_session.stop_event.is_set():
                     data = process.stdout.read(BUFFER_SIZE)
                     if not data:
@@ -87,6 +86,19 @@ def start_audio_recording(pulse_device):
     audio_client_session.recording_thread.start()
     return audio_client_session.recording_thread
 
+def extract_channel_name(url):
+    import re
+    match = re.search(r'youtube\\.com/@([^/]+)', url)
+    return match.group(1) if match else "unknown"
+
+def send_channel_metadata(channel_name, ssrc):
+    import socket
+    import json
+    msg = json.dumps({"ssrc": ssrc, "channel": channel_name})
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
+    sock.close()
+    
 def main():
     """Función principal."""
     
@@ -129,6 +141,10 @@ def main():
     print("🎯 Iniciando sistema de control de ads...")
     print("⚠️ Control automático de ads deshabilitado (para evitar segunda ventana)")
     
+    # 6.1 Prueba para crear una carpeta con el nombre del canal previamente
+    channel_name = extract_channel_name(url)
+    send_channel_metadata(channel_name, id_instance)
+
     # 7. Iniciar captura y grabación de audio
     start_audio_recording(sink_name)
     

@@ -25,7 +25,6 @@ def send_rtp_stream_to_server (data, id_instance):
     SSRC = id_instance
 
     total_len = len(data)
-    #log(f"Sending raw audio stream ({total_len} bytes) with SSRC: {SSRC}", "INFO")
     offset = 0
     frame_bytes = FRAME_SIZE * 2  # 2 bytes por muestra (int16)
 
@@ -43,13 +42,9 @@ def send_rtp_stream_to_server (data, id_instance):
 
 def create_rtp_packet(payload, sequence_number):
     global SSRC
-    #log(f"Creating RTP packet with sequence number: {sequence_number}", "DEBUG")
-
     # Asegurar que payload es bytearray
     if not isinstance(payload, bytearray):
         payload = bytearray(payload)
-    
-    #log(f"Payload type: {type(payload)}, length: {len(payload)}", "DEBUG")
     
     # Usar timestamp basado en samples, no en tiempo real
     timestamp = sequence_number * FRAME_SIZE  # Timestamp basado en samples procesados
