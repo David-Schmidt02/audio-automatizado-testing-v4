@@ -108,6 +108,7 @@ def send_channel_metadata(channel_name, ssrc):
         display_num = int(data.decode())
         log(f"✅ Display asignado por el servidor: :{display_num}", "INFO")
         XVFB_DISPLAY = f":{display_num}"
+        log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
     except socket.timeout:
         log("❌ No se recibió respuesta del servidor para el display", "ERROR")
         return None
@@ -147,6 +148,8 @@ def main():
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
     send_channel_metadata(channel_name, id_instance)
+    log(f"✅ Canal extraído: {channel_name}", "INFO")
+    log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
     xvfb_proc = start_xvfb(XVFB_DISPLAY)
     
     # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado
