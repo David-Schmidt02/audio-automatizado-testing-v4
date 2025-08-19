@@ -161,6 +161,7 @@ def main():
     # 4. Lanzar Chrome con sink preconfigurado
     if not audio_client_session.launch_chrome(url, XVFB_DISPLAY):
         audio_client_session.cleanup()
+        stop_xvfb(xvfb_proc)
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
