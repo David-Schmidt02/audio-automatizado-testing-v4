@@ -152,11 +152,17 @@ def main():
     log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
     xvfb_proc = start_xvfb(XVFB_DISPLAY)
     
+    """
     # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado
     if not audio_client_session.launch_firefox(url, XVFB_DISPLAY):
         audio_client_session.cleanup()
         sys.exit(1)
-    
+    """
+    # 4. Lanzar Chrome con sink preconfigurado
+    if not audio_client_session.launch_chrome(url, XVFB_DISPLAY):
+        audio_client_session.cleanup()
+        sys.exit(1)
+
     # 5. Esperar un poco para que Firefox inicie y luego configurar control de ads
     print("⏳ Esperando que Firefox se inicie completamente...")
     time.sleep(5)

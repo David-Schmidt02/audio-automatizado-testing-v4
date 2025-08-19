@@ -48,7 +48,7 @@ class AudioClientSession:
 
     def create_firefox_profile_for_snap(self):
         """Crea un directorio de perfil de Firefox en ~/snap/firefox/common/."""
-        base_dir = os.path.expanduser("~/snap/firefox/common/")
+        base_dir = os.path.expanduser("~/snap/firefox/common/.mozilla/firefox/")
         os.makedirs(base_dir, exist_ok=True)
         # Nombre único para el perfil
         profile_name = f"firefox-autoplay-{random.randint(10000, 99999)}"
@@ -112,7 +112,7 @@ class AudioClientSession:
 
         try:
             # Lanzar Firefox con sink preconfigurado y perfil optimizado
-            cmd = ["firefox", "--headless" "--new-instance", "--new-window"] + profile_args + [url]
+            cmd = ["firefox", "--headless", "--new-instance", "--new-window"] + profile_args + [url]
             
             self.firefox_process = subprocess.Popen(cmd, env=env)
 
@@ -123,6 +123,46 @@ class AudioClientSession:
             log(f"❌ Failed to start Firefox: {e}", "ERROR")
             return False
 
+    def create_chrome_profile(self):
+        """Crea un directorio de perfil de Chrome en ~/.config/google-chrome/ con nombre único."""
+        base_dir = os.path.expanduser("~/.config/google-chrome/")
+        os.makedirs(base_dir, exist_ok=True)
+        profile_name = f"chrome-profile-{random.randint(10000, 99999)}"
+        self.chrome_profile_dir = os.path.join(base_dir, profile_name)
+        os.makedirs(self.chrome_profile_dir, exist_ok=True)
+        log(f"📁 Perfil Chrome creado: {self.chrome_profile_dir}", "INFO")
+        return self.chrome_profile_dir
+
+    def launch_chrome(self, url, display):
+        """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
+        log(f"🚀 Launching Chrome with URL: {url}", "INFO")
+        if not hasattr(self, 'chrome_profile_dir') or not self.chrome_profile_dir:
+            log("⚠️ Usando perfil por defecto de Chrome", "WARNING")
+            profile_args = []
+        else:
+            profile_args = [f"--user-data-dir={self.chrome_profile_dir}"]
+
+        env = os.environ.copy()
+        env["PULSE_SINK"] = self.sink_name
+        env["DISPLAY"] = display
+
+        cmd = [
+            "google-chrome", "--headless", "--no-sandbox", "--disable-gpu",
+            "--window-size=1920,1080",
+            "--autoplay-policy=no-user-gesture-required",
+            "--disable-notifications",
+            "--disable-popup-blocking",
+            "--mute-audio",
+            "--disable-extensions"
+        ] + profile_args + [url]
+
+        try:
+            self.chrome_process = subprocess.Popen(cmd, env=env)
+            log("✅ Chrome launched with preconfigured audio sink and headless mode", "INFO")
+            return True
+        except Exception as e:
+            log(f"❌ Failed to start Chrome: {e}", "ERROR")
+            return False
 
     def cleanup(self):
         """Limpieza de recursos al finalizar - siguiendo patrón Go."""
