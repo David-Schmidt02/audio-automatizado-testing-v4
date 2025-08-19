@@ -79,7 +79,7 @@ def start_worker_client(client_id):
             log_jitter(client_id, buffer, next_seq)
 
             # Prefill del jitter buffer
-            prefill_done = check_prefill(buffer, client_id)
+            prefill_done = check_prefill(buffer, prefill_done,client_id)
             if not prefill_done:
                 if handle_inactivity(client, client_id):
                     break
