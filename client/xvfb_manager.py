@@ -19,7 +19,7 @@ def start_xvfb(display_number):
     Returns:
         subprocess.Popen: Proceso de Xvfb iniciado
     """
-    log("Iniciando Xvfb...")
+    log(f"Iniciando Xvfb con DISPLAY: {display_number}")
     xvfb_proc = subprocess.Popen([
         "Xvfb", display_number, 
         "-screen", XVFB_SCREEN, XVFB_RESOLUTION,

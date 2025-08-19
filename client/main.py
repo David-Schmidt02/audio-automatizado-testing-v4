@@ -88,6 +88,9 @@ def start_audio_recording(pulse_device):
     audio_client_session.recording_thread.start()
     return audio_client_session.recording_thread
 
+def obtain_display_num(ssrc):
+    pass
+
 def extract_channel_name(url):
     import re
     match = re.search(r'youtube\.com/@([^/]+)', url)
@@ -141,6 +144,9 @@ def main():
         log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
 
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
+    # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
+    channel_name = extract_channel_name(url)
+    send_channel_metadata(channel_name, id_instance)
     xvfb_proc = start_xvfb(XVFB_DISPLAY)
     
     # 4. Lanzar Firefox con sink preconfigurado y perfil optimizado
@@ -156,10 +162,6 @@ def main():
     print("🎯 Iniciando sistema de control de ads...")
     print("⚠️ Control automático de ads deshabilitado (para evitar segunda ventana)")
     
-    # 6.1 Prueba para crear una carpeta con el nombre del canal previamente
-    channel_name = extract_channel_name(url)
-    send_channel_metadata(channel_name, id_instance)
-
     # 7. Iniciar captura y grabación de audio
     start_audio_recording(sink_name)
     
