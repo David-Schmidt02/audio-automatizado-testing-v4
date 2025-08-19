@@ -3,6 +3,7 @@ import sys
 import threading
 import time
 import wave
+import gc
 
 from jitter_buffer import log_jitter, check_prefill
 from metadata import channel_map
@@ -55,6 +56,8 @@ def process_buffer(client, ssrc):
         # Verificar si hay que segmentar el archivo
         if time.time() - client['wav_start_time'] >= WAV_SEGMENT_SECONDS:
             client['wavefile'].close()
+            client['wavefile'] = None
+            gc.collect()
             client['wav_index'] += 1
             client['wavefile'] = create_wav_file(ssrc, wav_index=client['wav_index'])
             client['wav_start_time'] = time.time()
