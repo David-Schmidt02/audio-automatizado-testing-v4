@@ -10,12 +10,12 @@ from metadata import channel_map
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import SAMPLE_RATE, CHANNELS, INACTIVITY_TIMEOUT, MAX_WAIT, JITTER_BUFFER_SIZE
+from config import SAMPLE_RATE, CHANNELS, INACTIVITY_TIMEOUT, MAX_WAIT, JITTER_BUFFER_SIZE, WAV_SEGMENT_SECONDS
 
 clients_lock = threading.Lock()
 clients = dict()  # addr_str -> dict con 'wavefile' y 'lock'
 
-def create_wav_file(ssrc):
+def create_wav_file(ssrc, wav_index = 0):
     """Crea un WAV nuevo para el cliente en un directorio propio dentro de 'records'."""
     base_dir = "records"
     # Obtener el nombre del canal desde channel_map, o usar el ssrc si no existe
@@ -23,7 +23,7 @@ def create_wav_file(ssrc):
     log(f"📂 Creando directorio para canal: {channel_name}", "ERROR")
     client_dir = os.path.join(base_dir, channel_name)
     os.makedirs(client_dir, exist_ok=True)
-    name_wav = os.path.join(client_dir, f"record-{time.strftime('%Y%m%d-%H%M%S')}-{ssrc}.wav")
+    name_wav = os.path.join(client_dir, f"record-{time.strftime('%Y%m%d-%H%M%S')}-{ssrc}-{channel_name}-{wav_index}.wav")
     wf = wave.open(name_wav, "wb")
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(2)
@@ -48,13 +48,17 @@ def handle_inactivity(client, ssrc):
     return False
 
 
-def process_buffer(client):
-    """
-    Procesa el buffer de un cliente, escribiendo los paquetes en su archivo WAV.
-    """
+def process_buffer(client, ssrc):
     buffer = client['buffer']
     next_seq = client['next_seq']
     while buffer:
+        # Verificar si hay que segmentar el archivo
+        if time.time() - client['wav_start_time'] >= WAV_SEGMENT_SECONDS:
+            client['wavefile'].close()
+            client['wav_index'] += 1
+            client['wavefile'] = create_wav_file(ssrc, wav_index=client['wav_index'])
+            client['wav_start_time'] = time.time()
+            log(f"[Segmentación] Nuevo archivo WAV para {ssrc}, segmento {client['wav_index']}", "INFO")
         if next_seq in buffer:
             payload = buffer.pop(next_seq)
             client['wavefile'].writeframes(payload)
@@ -104,11 +108,14 @@ def get_or_create_client(ssrc, seq_num):
     with clients_lock:
         if ssrc not in clients:
             clients[ssrc] = {
-                'wavefile': create_wav_file(ssrc),
+                'wavefile': create_wav_file(ssrc, wav_index=0),
                 'lock': threading.Lock(),
                 'buffer': dict(),
                 'next_seq': seq_num,
                 'last_time': time.time(),
+                'wav_start_time': time.time(),  # Marca el inicio del archivo actual
+                'wav_index': 0,                 # Contador de archivos para ese cliente
+
             }
             t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
             t.start()
