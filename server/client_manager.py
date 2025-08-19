@@ -66,7 +66,7 @@ def process_buffer(client):
                 break
 
 
-def iniciar_worker_cliente(client_id):
+def start_worker_client(client_id):
     """Hilo que procesa paquetes en orden y escribe en WAV usando jitter buffer real."""
     log(f"[Worker] Iniciado para cliente con SSRC: {client_id}", "INFO")
     client = clients[client_id]
@@ -106,6 +106,6 @@ def get_or_create_client(client_id, seq_num):
                     'next_seq': seq_num,
                     'last_time': time.time(),
                 }
-                t = threading.Thread(target=iniciar_worker_cliente, args=(client_id), daemon=True)
+                t = threading.Thread(target=start_worker_client, args=(client_id,), daemon=True)
                 t.start()
         return clients[client_id]
