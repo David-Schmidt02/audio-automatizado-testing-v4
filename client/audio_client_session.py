@@ -153,7 +153,8 @@ class AudioClientSession:
             "--disable-notifications",
             "--disable-popup-blocking",
             "--mute-audio",
-            "--disable-extensions"
+            "--disable-extensions",
+            "--disable-gcm-registration"
         ] + profile_args + [url]
 
         try:
