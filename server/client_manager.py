@@ -87,7 +87,7 @@ def iniciar_worker_cliente(client_id):
                 continue
 
             # Procesar buffer
-            process_buffer(client, client_id, JITTER_BUFFER_SIZE)
+            process_buffer(client, client_id)
 
             # Cierre por inactividad
             if handle_inactivity(client, client_id):
@@ -106,6 +106,6 @@ def get_or_create_client(client_id, seq_num):
                     'next_seq': seq_num,
                     'last_time': time.time(),
                 }
-                t = threading.Thread(target=iniciar_worker_cliente, args=(client_id, JITTER_BUFFER_SIZE), daemon=True)
+                t = threading.Thread(target=iniciar_worker_cliente, args=(client_id), daemon=True)
                 t.start()
         return clients[client_id]

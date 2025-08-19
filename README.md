@@ -72,6 +72,7 @@ chmod +x scripts/setup.sh
 ### 5. Instalar dependencias Python
 
 ```bash
+# (El setup.sh ya se encarga e instalarlo)
 pip install -r requirements.txt
 ```
 
