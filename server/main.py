@@ -6,7 +6,7 @@ import socket
 import threading
 import json
 
-from utils import log_buffer_sizes_periodically, channel_map
+from utils import log_buffer_sizes_periodically
 from rtp_server import udp_listener_fixed_jitter
 from client_manager import clients_lock, clients
 from metadata import channel_map
