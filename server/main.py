@@ -42,6 +42,7 @@ def metadata_listener(ip, port):
             ssrc = str(msg['ssrc'])
             channel = msg['channel']
             channel_map[ssrc] = channel
+            log(f"📡 Metadata received: {ssrc} -> {channel}", "ERROR")
         except Exception as e:
             print(f"Error parsing metadata: {e}")
 

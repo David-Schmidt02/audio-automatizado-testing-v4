@@ -20,6 +20,7 @@ def create_wav_file(ssrc):
     base_dir = "records"
     # Obtener el nombre del canal desde channel_map, o usar el ssrc si no existe
     channel_name = channel_map.get(ssrc, str(ssrc))
+    log(f"📂 Creando directorio para canal: {channel_name}", "ERROR")
     client_dir = os.path.join(base_dir, channel_name)
     os.makedirs(client_dir, exist_ok=True)
     name_wav = os.path.join(client_dir, f"record-{time.strftime('%Y%m%d-%H%M%S')}-{ssrc}.wav")
