@@ -96,7 +96,7 @@ def extract_channel_name(url):
     match = re.search(r'youtube\.com/@([^/]+)', url)
     return match.group(1) if match else "unknown"
 
-def send_channel_metadata(channel_name, ssrc):
+def send_channel_metadata_and_return_display(channel_name, ssrc):
     import socket
     import json
     msg = json.dumps({"ssrc": ssrc, "channel": str(channel_name)})
@@ -107,8 +107,8 @@ def send_channel_metadata(channel_name, ssrc):
         data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
         display_num = int(data.decode())
         log(f"✅ Display asignado por el servidor: :{display_num}", "INFO")
-        XVFB_DISPLAY = f":{display_num}"
-        log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
+        display_str = f":{display_num}"
+        return display_str
     except socket.timeout:
         log("❌ No se recibió respuesta del servidor para el display", "ERROR")
         return None
@@ -147,7 +147,7 @@ def main():
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
-    send_channel_metadata(channel_name, id_instance)
+    XVFB_DISPLAY = send_channel_metadata(channel_name, id_instance)
     log(f"✅ Canal extraído: {channel_name}", "INFO")
     log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
     xvfb_proc = start_xvfb(XVFB_DISPLAY)
