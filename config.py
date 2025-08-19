@@ -13,3 +13,7 @@ DEST_PORT = 6001
 # Dirección IP y puerto del cliente RTP
 LISTEN_IP = "172.21.100.130" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001 # Puerto de escucha del cliente RTP, debe ser el mismo que DEST_PORT 
+
+INACTIVITY_TIMEOUT = 5  # segundos de inactividad para cerrar WAV
+JITTER_BUFFER_SIZE = 20  
+MAX_WAIT = 0.08  # Máximo tiempo de espera para procesar paquetes en el jitter buffer   
