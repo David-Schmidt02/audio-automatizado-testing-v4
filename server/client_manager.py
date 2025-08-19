@@ -87,7 +87,7 @@ def start_worker_client(client_id):
                 continue
 
             # Procesar buffer
-            process_buffer(client, client_id)
+            process_buffer(client)
 
             # Cierre por inactividad
             if handle_inactivity(client, client_id):
