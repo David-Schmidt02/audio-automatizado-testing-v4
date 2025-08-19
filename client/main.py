@@ -88,7 +88,7 @@ def start_audio_recording(pulse_device):
 
 def extract_channel_name(url):
     import re
-    match = re.search(r'youtube\\.com/@([^/]+)', url)
+    match = re.search(r'youtube\.com/@([^/]+)', url)
     return match.group(1) if match else "unknown"
 
 def send_channel_metadata(channel_name, ssrc):

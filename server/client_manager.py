@@ -101,23 +101,15 @@ def start_worker_client(ssrc):
 
 
 def get_or_create_client(ssrc, seq_num):
-        for _ in range(100):  # 100 * 0.01s = 1 segundo
-            if ssrc in channel_map:
-                log(f"[INFO] Metadata recibida para SSRC {ssrc}: {channel_map[ssrc]}", "INFO")
-                channel_name = channel_map[ssrc]
-                break
-            time.sleep(0.01)
-        else:
-            log(f"[WARN] No se recibió metadata para SSRC {ssrc}, usando nombre 'unknown'", "WARNING")
-        with clients_lock:
-            if ssrc not in clients:
-                clients[ssrc] = {
-                    'wavefile': create_wav_file(ssrc),
-                    'lock': threading.Lock(),
-                    'buffer': dict(),
-                    'next_seq': seq_num,
-                    'last_time': time.time(),
-                }
-                t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
-                t.start()
-        return clients[ssrc]
+    with clients_lock:
+        if ssrc not in clients:
+            clients[ssrc] = {
+                'wavefile': create_wav_file(ssrc),
+                'lock': threading.Lock(),
+                'buffer': dict(),
+                'next_seq': seq_num,
+                'last_time': time.time(),
+            }
+            t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
+            t.start()
+    return clients[ssrc]
