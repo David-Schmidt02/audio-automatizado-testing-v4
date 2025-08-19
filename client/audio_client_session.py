@@ -124,13 +124,13 @@ class AudioClientSession:
             return False
 
     def create_chrome_profile(self):
-        """Crea un directorio de perfil de Chromium en ~/.config/chromium/ con nombre único."""
-        base_dir = os.path.expanduser("~/.config/chromium/")
+        """Crea un directorio de perfil de Google Chrome en ~/.config/google-chrome/ con nombre único."""
+        base_dir = os.path.expanduser("~/.config/google-chrome/")
         os.makedirs(base_dir, exist_ok=True)
-        profile_name = f"chromium-profile-{random.randint(10000, 99999)}"
+        profile_name = f"chrome-profile-{random.randint(10000, 99999)}"
         self.chrome_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.chrome_profile_dir, exist_ok=True)
-        log(f"📁 Perfil Chromium creado: {self.chrome_profile_dir}", "INFO")
+        log(f"📁 Perfil Chrome creado: {self.chrome_profile_dir}", "INFO")
         return self.chrome_profile_dir
 
     def launch_chrome(self, url, display):
@@ -147,7 +147,7 @@ class AudioClientSession:
         env["DISPLAY"] = display
 
         cmd = [
-            "chromium-browser", "--headless", "--no-sandbox", "--disable-gpu",
+            "google-chrome", "--headless", "--no-sandbox", "--disable-gpu",
             "--window-size=1920,1080",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
