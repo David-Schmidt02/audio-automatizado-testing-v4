@@ -142,7 +142,7 @@ def main():
     chrome_profile_dir = audio_client_session.create_chrome_profile()
     if not chrome_profile_dir:
         audio_client_session.cleanup()
-        log("⚠️ Usando perfil por defecto de Chrome (sin autoplay optimizado)", "WARNING")
+        log("⚠️ Usando perfil por defecto de Chromium (sin autoplay optimizado)", "WARNING")
 
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
