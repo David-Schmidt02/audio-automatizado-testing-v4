@@ -101,6 +101,12 @@ def start_worker_client(ssrc):
 
 
 def get_or_create_client(ssrc, seq_num):
+        for _ in range(100):  # 100 * 0.01s = 1 segundo
+            if ssrc in channel_map:
+                break
+            time.sleep(0.01)
+        else:
+            log(f"[WARN] No se recibió metadata para SSRC {ssrc}, usando nombre 'unknown'", "WARNING")
         with clients_lock:
             if ssrc not in clients:
                 clients[ssrc] = {

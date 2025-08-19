@@ -94,8 +94,9 @@ def extract_channel_name(url):
 def send_channel_metadata(channel_name, ssrc):
     import socket
     import json
-    msg = json.dumps({"ssrc": ssrc, "channel": channel_name})
+    msg = json.dumps({"ssrc": ssrc, "channel": str(channel_name)})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    log(f"📡 Enviando metadata: {msg}", "ERROR")
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
     sock.close()
     

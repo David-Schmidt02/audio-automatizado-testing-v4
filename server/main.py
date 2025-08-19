@@ -35,6 +35,7 @@ def shutdown_handler(signum, frame):
 def metadata_listener(ip, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
+    log(f"🎧 Listening for CHANNEL NAME on {LISTEN_IP}:{port}", "INFO")
     while True:
         data, addr = sock.recvfrom(1024)
         try:
