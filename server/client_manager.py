@@ -19,7 +19,7 @@ def create_wav_file(ssrc):
     """Crea un WAV nuevo para el cliente en un directorio propio dentro de 'records'."""
     base_dir = "records"
     # Obtener el nombre del canal desde channel_map, o usar el ssrc si no existe
-    channel_name = channel_map.get(ssrc, str(ssrc))
+    channel_name = channel_map.get(str(ssrc), str(ssrc))
     log(f"📂 Creando directorio para canal: {channel_name}", "ERROR")
     client_dir = os.path.join(base_dir, channel_name)
     os.makedirs(client_dir, exist_ok=True)
@@ -103,6 +103,8 @@ def start_worker_client(ssrc):
 def get_or_create_client(ssrc, seq_num):
         for _ in range(100):  # 100 * 0.01s = 1 segundo
             if ssrc in channel_map:
+                log(f"[INFO] Metadata recibida para SSRC {ssrc}: {channel_map[ssrc]}", "INFO")
+                channel_name = channel_map[ssrc]
                 break
             time.sleep(0.01)
         else:
