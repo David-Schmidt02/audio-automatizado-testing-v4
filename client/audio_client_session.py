@@ -18,10 +18,10 @@ class AudioClientSession:
     def __init__(self, id_instance):
         self.sink_name = None
         self.module_id = None
-        self.firefox_process = None
+        self.navegador_process = None
         self.recording_thread = None
 
-        self.firefox_profile_dir = None
+        self.navegador_profile_dir = None
         self.id_instance = id_instance
         self.output_dir = None
         self.stop_event = threading.Event()
@@ -86,10 +86,10 @@ class AudioClientSession:
         try:
             with open(prefs_js, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(preferences))
-            log(f"📁 Perfil Firefox creado: {self.firefox_profile_dir}", "INFO")
-            return self.firefox_profile_dir
+            log(f"📁 Perfil Firefox creado: {self.navegador_profile_dir}", "INFO")
+            return self.navegador_profile_dir
         except Exception as e:
-            self.firefox_profile_dir = None
+            self.navegador_profile_dir = None
             log(f"❌ Error creando perfil: {e}", "ERROR")
             return None
 
@@ -99,11 +99,11 @@ class AudioClientSession:
         log(f"🚀 Launching Firefox with URL: {url}", "INFO")
 
         # Usar el perfil recibido como parámetro (creado en main)
-        if not self.firefox_profile_dir:
+        if not self.navegador_profile_dir:
             log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
             profile_args = []
         else:
-            profile_args = ["--profile", self.firefox_profile_dir]
+            profile_args = ["--profile", self.navegador_profile_dir]
         
         # Configurar variables de entorno
         env = os.environ.copy()
@@ -113,8 +113,8 @@ class AudioClientSession:
         try:
             # Lanzar Firefox con sink preconfigurado y perfil optimizado
             cmd = ["firefox", "--headless", "--new-instance", "--new-window"] + profile_args + [url]
-            
-            self.firefox_process = subprocess.Popen(cmd, env=env)
+
+            self.navegador_process = subprocess.Popen(cmd, env=env)
 
             log("✅ Firefox launched with preconfigured audio sink and autoplay", "INFO")
             return True
@@ -157,15 +157,41 @@ class AudioClientSession:
         ] + profile_args + [url]
 
         try:
-            self.chrome_process = subprocess.Popen(cmd, env=env)
+            self.browser_process = subprocess.Popen(cmd, env=env)
             log("✅ Chrome launched with preconfigured audio sink and headless mode", "INFO")
             return True
         except Exception as e:
             log(f"❌ Failed to start Chrome: {e}", "ERROR")
             return False
 
+    def cerrar_navegador(self):
+        """Cierra el proceso de navegador (Chrome/Chromium/Firefox) si está en ejecución."""
+        if hasattr(self, 'browser_process') and self.browser_process:
+            log("🔥 Terminating navegador...", "INFO")
+            try:
+                self.browser_process.terminate()
+                try:
+                    self.browser_process.communicate(timeout=5)
+                except Exception:
+                    pass
+            except Exception as e:
+                log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
+                try:
+                    self.browser_process.kill()
+                except Exception:
+                    pass
+        
+    def limpiar_perfil_navegador(self):
+        if self.navegador_profile_dir and os.path.exists(self.navegador_profile_dir):
+            try:
+                import shutil
+                shutil.rmtree(self.navegador_profile_dir)
+                log(f"🗑️ Perfil Navegador eliminado: {self.navegador_profile_dir}", "INFO")
+            except Exception as e:
+                log(f"⚠️ Error eliminando perfil Navegador: {e}", "ERROR")
+
     def cleanup(self):
-        """Limpieza de recursos al finalizar - siguiendo patrón Go."""
+        """Limpieza de recursos al finalizar."""
         global output_dir
 
         log("\n🛑 Received shutdown signal. Cleaning up...", "WARNING")
@@ -173,31 +199,11 @@ class AudioClientSession:
         # Señalar a todos los hilos que paren
         self.stop_event.set()
 
-        # Cerrar Firefox
-        if self.firefox_process:
-            log("🔥 Terminating Firefox...", "INFO")
-            try:
-                # Redirigir stderr para suprimir mensajes molestos
-                self.firefox_process.terminate()
-                try:
-                    self.firefox_process.communicate(timeout=5)
-                except Exception:
-                    pass
-            except Exception as e:
-                log(f"⚠️ Failed to terminate Firefox: {e}", "ERROR")
-                try:
-                    self.firefox_process.kill()
-                except Exception:
-                    pass
+        # Cerrar Navegador
+        self.cerrar_navegador()
 
-        # Limpiar perfil temporal de Firefox
-        if self.firefox_profile_dir and os.path.exists(self.firefox_profile_dir):
-            try:
-                import shutil
-                shutil.rmtree(self.firefox_profile_dir)
-                log(f"🗑️ Perfil Firefox eliminado: {self.firefox_profile_dir}", "INFO")
-            except Exception as e:
-                log(f"⚠️ Error eliminando perfil Firefox: {e}", "ERROR")
+        # Limpiar perfil temporal de Navegador
+        self.limpiar_perfil_navegador()
 
         # Esperar a que termine el hilo de grabación
         if self.recording_thread and self.recording_thread.is_alive():

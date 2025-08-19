@@ -139,10 +139,10 @@ def main():
         sys.exit(1)
     
     # 3. Crear perfil de Firefox con autoplay habilitado (solo una vez)
-    firefox_profile_dir = audio_client_session.create_firefox_profile()
-    if not firefox_profile_dir:
+    chrome_profile_dir = audio_client_session.create_chrome_profile()
+    if not chrome_profile_dir:
         audio_client_session.cleanup()
-        log("⚠️ Usando perfil por defecto (sin autoplay optimizado)", "WARNING")
+        log("⚠️ Usando perfil por defecto de Chrome (sin autoplay optimizado)", "WARNING")
 
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
@@ -163,8 +163,8 @@ def main():
         audio_client_session.cleanup()
         sys.exit(1)
 
-    # 5. Esperar un poco para que Firefox inicie y luego configurar control de ads
-    print("⏳ Esperando que Firefox se inicie completamente...")
+    # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
+    print("⏳ Esperando que Chrome se inicie completamente...")
     time.sleep(5)
     
     # 6. Iniciar control de ads con Selenium usando el mismo perfil
