@@ -124,8 +124,8 @@ class AudioClientSession:
             return False
 
     def create_chrome_profile(self):
-        """Crea un directorio de perfil de Chrome en ~/.config/google-chrome/ con nombre único."""
-        base_dir = os.path.expanduser("~/.config/google-chrome/")
+        """Crea un directorio de perfil de Chrome en ~/.config/chromium-browser/ con nombre único."""
+        base_dir = os.path.expanduser("~/.config/chromium-browser/")
         os.makedirs(base_dir, exist_ok=True)
         profile_name = f"chrome-profile-{random.randint(10000, 99999)}"
         self.chrome_profile_dir = os.path.join(base_dir, profile_name)
