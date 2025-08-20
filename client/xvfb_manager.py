@@ -43,7 +43,8 @@ def start_xvfb(display_number):
                 log(f"Xvfb listo en {(attempt + 1) * 0.2:.1f}s", "SUCCESS")
                 return xvfb_proc
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-            pass
+            log("❌ Xvfb no está listo", "ERROR")
+            return None
         time.sleep(0.2)
     
     # Fallback: si no se puede verificar, asumir que está listo
@@ -58,7 +59,7 @@ def stop_xvfb(xvfb_proc):
     Args:
         xvfb_proc (subprocess.Popen): Proceso de Xvfb a detener
     """
-    log("Cerrando Xvfb...")
+    log("Closing Xvfb...")
     xvfb_proc.terminate()
     xvfb_proc.wait()
-    log("Xvfb cerrado", "SUCCESS")
+    log("✅ Cleanup: Xvfb complete.", "SUCCESS")
