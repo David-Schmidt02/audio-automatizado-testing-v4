@@ -143,7 +143,6 @@ class Navigator():
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--mute-audio",
             "--disable-extensions",
             "--disable-gcm-registration",
             "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
@@ -161,7 +160,6 @@ class Navigator():
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--mute-audio",
             "--disable-extensions",
             "--disable-gcm-registration",
             "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
