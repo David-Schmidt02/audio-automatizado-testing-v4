@@ -168,6 +168,7 @@ class Navigator():
         ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
+        log(f"Comando Chromium: {' '.join(cmd)}", "DEBUG")
         subp = subprocess.Popen(cmd, env=env)
         log(f"✅ Chromium launched with preconfigured audio sink and autoplay with subprocess {subp.pid}", "INFO")
         return subp
