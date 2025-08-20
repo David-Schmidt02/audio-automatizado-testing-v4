@@ -73,7 +73,7 @@ def main():
 
     url = sys.argv[1]
     navigator_name = sys.argv[2]
-    headless = sys.argv[3].lower() 
+    headless = sys.argv[3].lower() == 'true'
     HEADLESS = headless
 
     # Variables globales para cleanup
