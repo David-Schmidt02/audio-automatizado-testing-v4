@@ -138,7 +138,7 @@ class Navigator():
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "google-chrome", "--no-sandbox", "--disable-gpu",
+            "google-chrome", "--disable-gpu",
             "--window-size=1920,1080",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
@@ -156,7 +156,7 @@ class Navigator():
         """Lanza Chromium en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "chromium", "--no-sandbox", "--disable-gpu",
+            "chromium", "--disable-gpu",
             "--window-size=1920,1080",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
@@ -168,10 +168,8 @@ class Navigator():
         ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
-        log(f"Comando Chromium: {' '.join(cmd)}", "DEBUG")
-        subp = subprocess.Popen(cmd, env=env)
-        log(f"✅ Chromium launched with preconfigured audio sink and autoplay with subprocess {subp.pid}", "INFO")
-        return subp
+        return subprocess.Popen(cmd, env=env)
+
 
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""

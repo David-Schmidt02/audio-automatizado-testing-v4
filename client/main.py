@@ -122,8 +122,7 @@ def main():
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log(f"Proceso de navegador: {navigator_process}", "INFO")
-    log(f"✅ Navegador lanzado: {navigator_name} en el proceso {navigator_process.pid}", "INFO")
-    log(f"✅ Navegador lanzado: {navigator_name} en el proceso {navigator_process}", "INFO")
+    
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
