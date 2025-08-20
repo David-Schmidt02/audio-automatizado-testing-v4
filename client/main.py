@@ -109,6 +109,7 @@ def main():
     send_channel_metadata(channel_name, id_instance)
     log(f"✅ Canal extraído: {channel_name}", "INFO")
     if HEADLESS:
+        log(f"MODO SOLICITADO: {HEADLESS}")
         XVFB_DISPLAY = return_display_number(id_instance)
         log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
         xvfb_proc = start_xvfb(XVFB_DISPLAY)
