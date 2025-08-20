@@ -22,13 +22,14 @@ class Navigator():
     def create_navigator_profile(self):
         """Crea un directorio de perfil para el navegador."""
         if self.navigator_name == "Firefox":
-            self.create_firefox_profile()
+            return self.create_firefox_profile()
         elif self.navigator_name == "Chrome":
-            self.create_chrome_profile()
+            return self.create_chrome_profile()
         elif self.navigator_name == "Chromium":
-            self.create_chromium_profile()
+            return self.create_chromium_profile()
         else:
             log("❌ Navegador no soportado", "ERROR")
+            return None
 
     def create_firefox_profile(self):
         """Crea un directorio temporal para el perfil de Firefox."""
