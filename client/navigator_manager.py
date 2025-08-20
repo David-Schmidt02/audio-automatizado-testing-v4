@@ -168,7 +168,9 @@ class Navigator():
         ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
-        return subprocess.Popen(cmd, env=env)
+        subp = subprocess.Popen(cmd, env=env)
+        log(f"✅ Chromium launched with preconfigured audio sink and autoplay with subprocess {subp.pid}", "INFO")
+        return subp
 
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
