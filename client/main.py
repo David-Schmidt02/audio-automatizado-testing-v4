@@ -74,6 +74,7 @@ def main():
     url = sys.argv[1]
     navigator_name = sys.argv[2]
     headless = sys.argv[3].lower() 
+    HEADLESS = headless
 
     # Variables globales para cleanup
     id_instance = random.randint(1000, 100000)
