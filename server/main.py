@@ -46,7 +46,7 @@ def metadata_listener(ip, port):
             channel_map[ssrc] = channel
             log(f"📡 Metadata received: {ssrc} -> {channel}", "INFO")
         else:
-            log(f"❌ Mensaje JSON no reconocido: {msg}", "ERROR")
+            log(f"❌ Mensaje JSON no reconocido Metadata Listener: {msg}", "ERROR")
 
 def obtain_display_num_listener(ip, port):
     global HEADLESS
@@ -64,7 +64,7 @@ def obtain_display_num_listener(ip, port):
                 sock.sendto(str(display_num).encode(), (ip, port))
                 log(f"🖥️ Display solicitado por {ssrc}, asignado: {display_num}", "INFO")
         else:
-            log(f"❌ Mensaje JSON no reconocido: {msg}", "ERROR")
+            log(f"❌ Mensaje JSON no reconocido Display Listener: {msg}", "ERROR")
 
 
 if __name__ == "__main__":
