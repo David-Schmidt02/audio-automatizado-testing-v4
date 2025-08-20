@@ -39,7 +39,6 @@ def send_channel_metadata(channel_name, ssrc):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     log(f"📡 Enviando metadata: {msg}", "INFO")
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
-    sock.close()
 
 
 def return_display_number(ssrc):
