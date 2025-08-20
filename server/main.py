@@ -48,6 +48,7 @@ def metadata_listener(ip, port):
         except Exception as e:
             log(f"❌ Error processing metadata: {e}", "ERROR")
 
+
 def obtain_display_num_listener(ip, port):
     global HEADLESS
     import json

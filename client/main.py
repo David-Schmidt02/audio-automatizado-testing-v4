@@ -109,11 +109,17 @@ def main():
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
     send_channel_metadata(channel_name, id_instance)
+    time.sleep(1)  # Esperar un poco para que el servidor procese la metadata
     log(f"✅ Canal extraído: {channel_name}", "INFO")
     if HEADLESS:
-        log(f"MODO SOLICITADO: {HEADLESS}")
         XVFB_DISPLAY = return_display_number(id_instance)
-        log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
+        if not XVFB_DISPLAY:
+            log("❌ No se pudo obtener el número de display", "ERROR")
+            audio_client_session.cleanup()
+            navigator_manager.cleanup()
+            sys.exit(1)
+        else:
+            log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
         xvfb_proc = start_xvfb(XVFB_DISPLAY)
         if not xvfb_proc:
             audio_client_session.cleanup()
