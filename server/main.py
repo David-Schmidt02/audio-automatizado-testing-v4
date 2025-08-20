@@ -40,6 +40,7 @@ def metadata_listener(ip, port):
     while True:
         data, _ = sock.recvfrom(1024)
         msg = json.loads(data.decode())
+        log(f"📡 Metadata received: {msg.get('ssrc')} -> {msg.get('channel')} and {msg.get('cmd')  }", "INFO")
         if msg.get("cmd") == "ssrc":
             ssrc = str(msg['ssrc'])
             channel = msg['channel']
