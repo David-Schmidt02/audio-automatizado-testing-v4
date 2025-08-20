@@ -66,7 +66,7 @@ def main():
     id_instance = random.randint(1000, 100000)
 
     # Controlador de sesión de audio
-    audio_client_session = AudioClientSession(id_instance, navigator_name)
+    audio_client_session = AudioClientSession(id_instance)
 
     # Manager del navegador
     navigator_manager = Navigator(navigator_name)
