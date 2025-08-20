@@ -118,9 +118,10 @@ class Navigator():
             elif self.navigator_name == "Chromium":
                 self.browser_process = self.launch_chromium(url, env)
             log(f"✅ {self.navigator_name} launched with preconfigured audio sink and autoplay", "INFO")
+            return self.browser_process
         except Exception as e:
             log(f"❌ Error lanzando {self.navigator_name}: {e}", "ERROR")
-            return False
+            return None
 
     def launch_firefox(self, url, env):
         """Lanza Firefox con el sink preconfigurado y perfil ya creado."""
