@@ -36,7 +36,7 @@ def metadata_listener(ip, port):
     import json
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
-    log(f"🎧 Listening for CHANNEL NAME on {LISTEN_IP}:{port}", "INFO")
+    log(f"🎧 Listening for metadata on {LISTEN_IP}:{port}", "INFO")
     while True:
         data, _ = sock.recvfrom(1024)
         msg = json.loads(data.decode())
@@ -53,7 +53,7 @@ def obtain_display_num_listener(ip, port):
     import json
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
-    log(f"🎧 Listening for CHANNEL NAME on {LISTEN_IP}:{port}", "INFO")
+    log(f"🎧 Listening for display number requests on {LISTEN_IP}:{port}", "INFO")
     while True:
         data, addr = sock.recvfrom(1024)
         msg = json.loads(data.decode())
@@ -62,7 +62,7 @@ def obtain_display_num_listener(ip, port):
             if HEADLESS:
                 display_num = len(channel_map) + 10
                 sock.sendto(str(display_num).encode(), (ip, port))
-                log(f"🖥️ Display solicitado por {ssrc}, asignado: {display_num}", "INFO")
+                log(f"🖥️ Display solicitado por el cliente: {ssrc}, asignado: {display_num}", "INFO")
         else:
             log(f"❌ Mensaje JSON no reconocido Display Listener: {msg}", "ERROR")
 
