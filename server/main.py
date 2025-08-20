@@ -14,7 +14,7 @@ from metadata import channel_map
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import METADATA_PORT, LISTEN_IP
+from config import METADATA_PORT, LISTEN_IP, HEADLESS
 
 def shutdown_handler(signum, frame):
     log("\n🛑 Shutting down server...", "WARNING")
@@ -33,6 +33,7 @@ def shutdown_handler(signum, frame):
 
 
 def metadata_listener(ip, port):
+    global HEADLESS
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
     log(f"🎧 Listening for CHANNEL NAME on {LISTEN_IP}:{port}", "INFO")
@@ -45,8 +46,9 @@ def metadata_listener(ip, port):
             channel_map[ssrc] = channel
             log(f"📡 Metadata received: {ssrc} -> {channel}", "ERROR")
             # Asignar display: cantidad de canales activos + 10 (puedes ajustar el offset)
-            display_num = len(channel_map) + 10
-            sock.sendto(str(display_num).encode(), addr)
+            if HEADLESS:
+                display_num = len(channel_map) + 10
+                sock.sendto(str(display_num).encode(), addr)
         except Exception as e:
             print(f"Error parsing metadata: {e}")
 

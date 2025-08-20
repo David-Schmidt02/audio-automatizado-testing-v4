@@ -26,3 +26,5 @@ INACTIVITY_TIMEOUT = 5  # segundos de inactividad para cerrar WAV
 JITTER_BUFFER_SIZE = 20
 MAX_WAIT = 0.08  # Máximo tiempo de espera para procesar paquetes en el jitter buffer
 WAV_SEGMENT_SECONDS = 180  # Segundos de cada segmento WAV
+
+HEADLESS = True

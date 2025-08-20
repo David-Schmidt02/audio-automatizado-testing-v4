@@ -11,10 +11,11 @@ sys.path.insert(0, parent_dir)
 from my_logger import log
 
 class Navigator():
-    def __init__(self, name, sink_name):
+    def __init__(self, name, sink_name, headless):
         self.navigator_name = name
         self.profile_path = None
         self.sink_name = sink_name
+        self.headless = headless
 
         self.browser_process = None
         self.navigator_profile_dir = None
@@ -128,14 +129,16 @@ class Navigator():
         """Lanza Firefox con el sink preconfigurado y perfil ya creado."""
         profile_args = ["--profile", self.navigator_profile_dir]
         # Lanzar Firefox con sink preconfigurado y perfil optimizado
-        cmd = ["firefox", "--headless", "--new-instance", "--new-window"] + profile_args + [url]
+        cmd = ["firefox", "--new-instance", "--new-window"] + profile_args + [url]
+        if self.headless:
+            cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
 
     def launch_chrome(self, url, env):
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "google-chrome", "--headless", "--no-sandbox", "--disable-gpu",
+            "google-chrome", "--no-sandbox", "--disable-gpu",
             "--window-size=1920,1080",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
@@ -145,13 +148,15 @@ class Navigator():
             "--disable-gcm-registration",
             "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
         ] + profile_args + [url]
+        if self.headless:
+            cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
 
     def launch_chromium(self, url, env):
         """Lanza Chromium en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "chromium", "--headless", "--no-sandbox", "--disable-gpu",
+            "chromium", "--no-sandbox", "--disable-gpu",
             "--window-size=1920,1080",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
@@ -161,6 +166,8 @@ class Navigator():
             "--disable-gcm-registration",
             "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
         ] + profile_args + [url]
+        if self.headless:
+            cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
 
     def cerrar_navegador(self):
