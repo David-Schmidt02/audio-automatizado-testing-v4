@@ -1,4 +1,4 @@
-from asyncio import subprocess
+import subprocess
 import os
 import random
 import sys
