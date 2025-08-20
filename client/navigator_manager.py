@@ -3,6 +3,7 @@ import os
 import random
 import sys
 import tempfile
+import psutil
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
@@ -161,15 +162,37 @@ class Navigator():
         return subprocess.Popen(cmd, env=env)
 
     def cerrar_navegador(self):
-        """Cierra el proceso de navegador (Chrome/Chromium/Firefox) si está en ejecución."""
+        """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
             log("🔥 Terminating navegador...", "INFO")
             try:
+                # Intentar terminar el proceso principal
                 self.browser_process.terminate()
                 try:
                     self.browser_process.communicate(timeout=5)
                 except Exception:
                     pass
+                # Intentar terminar procesos hijos si existen (requiere psutil)
+                try:
+                    parent = psutil.Process(self.browser_process.pid)
+                    children = parent.children(recursive=True)
+                    for child in children:
+                        log(f"⚠️ Killing child process {child.pid}", "WARNING")
+                        try:
+                            child.terminate()
+                        except Exception:
+                            pass
+                    gone, alive = psutil.wait_procs(children, timeout=3)
+                    for p in alive:
+                        log(f"⚠️ Forcibly killing child process {p.pid}", "WARNING")
+                        try:
+                            p.kill()
+                        except Exception:
+                            pass
+                except ImportError:
+                    log("psutil no está instalado, no se pueden matar procesos hijos.", "WARNING")
+                except Exception as e:
+                    log(f"⚠️ Error terminando procesos hijos: {e}", "ERROR")
             except Exception as e:
                 log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
                 try:

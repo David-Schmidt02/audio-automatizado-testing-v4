@@ -116,7 +116,7 @@ def main():
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
-    print("⏳ Esperando que Chrome se inicie completamente...")
+    print(f"⏳ Esperando que {navigator_name} se inicie completamente...")
     time.sleep(5)
 
 
