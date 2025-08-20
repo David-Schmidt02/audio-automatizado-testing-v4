@@ -10,7 +10,7 @@ import random
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, HEADLESS
+from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, HEADLESS, NUM_DISPLAY_PORT
 
 from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
@@ -39,6 +39,7 @@ def send_channel_metadata(channel_name, ssrc):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     log(f"📡 Enviando metadata: {msg}", "INFO")
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
+    sock.close()
 
 
 def return_display_number(ssrc):
@@ -47,7 +48,7 @@ def return_display_number(ssrc):
     msg = json.dumps({"cmd": "GET_DISPLAY_NUM", "ssrc": ssrc})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(5)  # 5 segundos de espera
-    sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
+    sock.sendto(msg.encode(), (DEST_IP, NUM_DISPLAY_PORT))
     log(f"🖥️ Display solicitado por {ssrc}", "INFO")
     try:
         data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
