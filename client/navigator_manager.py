@@ -128,7 +128,7 @@ class Navigator():
         profile_args = ["--profile", self.navigator_profile_dir]
         # Lanzar Firefox con sink preconfigurado y perfil optimizado
         cmd = ["firefox", "--headless", "--new-instance", "--new-window"] + profile_args + [url]
-        self.browser_process = subprocess.Popen(cmd, env=env)
+        return subprocess.Popen(cmd, env=env)
 
     def launch_chrome(self, url, env):
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
