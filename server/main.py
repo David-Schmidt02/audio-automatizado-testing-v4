@@ -58,7 +58,7 @@ def obtain_display_num_listener(ip, port):
     while True:
         data, addr = sock.recvfrom(1024)
         msg = json.loads(data.decode())
-        ssrc = str(msg.get("ssrc"))
+        ssrc = str(msg["ssrc"])
         if msg.get("cmd") == "GET_DISPLAY_NUM":
             if HEADLESS:
                 display_num = len(channel_map) + 10

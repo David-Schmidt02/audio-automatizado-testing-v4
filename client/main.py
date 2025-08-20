@@ -48,7 +48,6 @@ def return_display_number(ssrc):
     msg = json.dumps({"cmd": "GET_DISPLAY_NUM", "ssrc": ssrc})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(msg.encode(), (DEST_IP, NUM_DISPLAY_PORT))
-    sock.settimeout(5)  # 5 segundos de espera
     log(f"🖥️ Display solicitado por el cliente: {ssrc}", "INFO")
     try:
         data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
