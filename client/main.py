@@ -47,7 +47,9 @@ def return_display_number(ssrc):
     import json
     msg = json.dumps({"cmd": "GET_DISPLAY_NUM", "ssrc": ssrc})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(5)  # 5 segundos de espera
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
+    log(f"🖥️ Display solicitado por {ssrc}, asignado: {display_num}", "INFO")
     try:
         data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
         display_num = int(data.decode())
@@ -122,7 +124,7 @@ def main():
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log(f"Proceso de navegador: {navigator_process}", "INFO")
-    
+
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
