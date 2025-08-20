@@ -110,8 +110,8 @@ class Navigator():
         # Variables de entorno
         env = os.environ.copy()
         env["PULSE_SINK"] = self.sink_name
-        env["DISPLAY"] = display_num
-        
+        if display_num:
+            env["DISPLAY"] = display_num
         try:
             if self.navigator_name == "Firefox":
                 self.browser_process = self.launch_firefox(url, env)
