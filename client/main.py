@@ -75,8 +75,7 @@ def main():
     navigator_name = sys.argv[2]
     headless = sys.argv[3].lower() 
     HEADLESS = headless
-    log(f"MODO SOLICITADO: {headless}")
-    log(f"MODO SOLICITADO: {HEADLESS}")
+
     # Variables globales para cleanup
     id_instance = random.randint(1000, 100000)
 
@@ -119,6 +118,7 @@ def main():
             stop_xvfb(xvfb_proc)
             sys.exit(1)
 
+    log(f"✅ Display configurado: {XVFB_DISPLAY}", "INFO")
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log(f"✅ Navegador lanzado: {navigator_name} en el proceso {navigator_process.pid}", "INFO")
