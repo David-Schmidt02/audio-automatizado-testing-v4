@@ -61,7 +61,7 @@ def obtain_display_num_listener(ip, port):
         if msg.get("cmd") == "GET_DISPLAY_NUM":
             if HEADLESS:
                 display_num = len(channel_map) + 10
-                sock.sendto(str(display_num).encode(), (addr[0], addr[1]))
+                sock.sendto(str(display_num).encode(), addr)
                 log(f"🖥️ Display solicitado por el cliente: {ssrc}, asignado: {display_num}", "INFO")
         else:
             log(f"❌ Mensaje JSON no reconocido Display Listener: {msg}", "ERROR")
