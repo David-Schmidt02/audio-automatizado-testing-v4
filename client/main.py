@@ -10,7 +10,7 @@ import random
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import BUFFER_SIZE, DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY
+from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY
 
 from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
@@ -56,6 +56,8 @@ def main():
         print(f"Usage: {sys.argv[0]} <URL> <Navegador>")
         print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'Firefox/Chrome/Chromium'")
         sys.exit(1)
+
+    global XVFB_DISPLAY
 
     url = sys.argv[1]
     navigator_name = sys.argv[2]

@@ -90,9 +90,12 @@ class Navigator():
         return self.navigator_profile_dir
 
     def create_chromium_profile(self):
-        """Crea un directorio de perfil para Chromium."""
+        """Crea un directorio de perfil para Chromium en ~/.config/chromium/ con nombre único."""
         base_dir = os.path.expanduser("~/.config/chromium/")
-        self.navigator_profile_dir = tempfile.mkdtemp(prefix="chromium-profile-")
+        os.makedirs(base_dir, exist_ok=True)
+        profile_name = f"chromium-profile-{self.random_id}"
+        self.navigator_profile_dir = os.path.join(base_dir, profile_name)
+        os.makedirs(self.navigator_profile_dir, exist_ok=True)
         log(f"📁 Perfil de Chromium creado: {self.navigator_profile_dir}", "INFO")
         return self.navigator_profile_dir
 
