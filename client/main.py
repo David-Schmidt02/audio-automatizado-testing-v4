@@ -16,9 +16,12 @@ from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
 from xvfb_manager import start_xvfb, stop_xvfb
 
+audio_client_session = None
+navigator_manager = None
 
 def signal_handler(sig, frame):
     audio_client_session.cleanup()
+    navigator_manager.cleanup()
     sys.exit(0)
 
 def obtain_display_num(ssrc):
@@ -50,14 +53,13 @@ def send_channel_metadata_and_return_display(channel_name, ssrc):
     
 def main():
     """Función principal."""
-    
+    global audio_client_session, navigator_manager, XVFB_DISPLAY
+
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 3:
         print(f"Usage: {sys.argv[0]} <URL> <Navegador>")
         print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'Firefox/Chrome/Chromium'")
         sys.exit(1)
-
-    global XVFB_DISPLAY
 
     url = sys.argv[1]
     navigator_name = sys.argv[2]
