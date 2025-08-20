@@ -142,7 +142,8 @@ class Navigator():
             "--disable-popup-blocking",
             "--mute-audio",
             "--disable-extensions",
-            "--disable-gcm-registration"
+            "--disable-gcm-registration",
+            "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo"
         ] + profile_args + [url]
         return subprocess.Popen(cmd, env=env)
 
@@ -157,7 +158,8 @@ class Navigator():
             "--disable-popup-blocking",
             "--mute-audio",
             "--disable-extensions",
-            "--disable-gcm-registration"
+            "--disable-gcm-registration",
+            "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo"
         ] + profile_args + [url]
         return subprocess.Popen(cmd, env=env)
 
