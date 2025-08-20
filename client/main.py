@@ -68,9 +68,6 @@ def main():
     # Controlador de sesión de audio
     audio_client_session = AudioClientSession(id_instance)
 
-    # Manager del navegador
-    navigator_manager = Navigator(navigator_name)
-
     # Configurar señales para cleanup
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -80,7 +77,11 @@ def main():
     if not sink_name:
         audio_client_session.cleanup()
         sys.exit(1)
-    
+
+    # 2.1 Crear el manager de browser
+    # Manager del navegador
+    navigator_manager = Navigator(navigator_name, sink_name)
+
     # 3. Crear perfil del Navegador (con autoplay)
     navigator_profile_dir = navigator_manager.create_navigator_profile()
     if not navigator_profile_dir:

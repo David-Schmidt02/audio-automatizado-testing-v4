@@ -10,9 +10,10 @@ sys.path.insert(0, parent_dir)
 from my_logger import log
 
 class Navigator():
-    def __init__(self, name):
+    def __init__(self, name, sink_name):
         self.navigator_name = name
         self.profile_path = None
+        self.sink_name = sink_name
 
         self.browser_process = None
         self.navigator_profile_dir = None
