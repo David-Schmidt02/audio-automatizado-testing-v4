@@ -40,14 +40,13 @@ def metadata_listener(ip, port):
     while True:
         data, _ = sock.recvfrom(1024)
         msg = json.loads(data.decode())
-        log(f"📡 Metadata received: {msg.get('ssrc')} -> {msg.get('channel')} and {msg.get('cmd')  }", "INFO")
-        if msg.get("cmd") == "ssrc":
+        try:
             ssrc = str(msg['ssrc'])
             channel = msg['channel']
             channel_map[ssrc] = channel
             log(f"📡 Metadata received: {ssrc} -> {channel}", "INFO")
-        else:
-            log(f"❌ Mensaje JSON no reconocido Metadata Listener: {msg}", "ERROR")
+        except Exception as e:
+            log(f"❌ Error processing metadata: {e}", "ERROR")
 
 def obtain_display_num_listener(ip, port):
     global HEADLESS
