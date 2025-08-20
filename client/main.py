@@ -44,8 +44,10 @@ def send_channel_metadata(channel_name, ssrc):
 
 def return_display_number(ssrc):
     import socket
+    import json
+    msg = json.dumps({"cmd": "GET_DISPLAY_NUM", "ssrc": ssrc})
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"GET_DISPLAY_NUM", (DEST_IP, METADATA_PORT))
+    sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
     try:
         data, _ = sock.recvfrom(1024)  # Espera la respuesta del servidor
         display_num = int(data.decode())

@@ -34,6 +34,7 @@ def shutdown_handler(signum, frame):
 
 def metadata_listener(ip, port):
     global HEADLESS
+    import json
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
     log(f"🎧 Listening for CHANNEL NAME on {LISTEN_IP}:{port}", "INFO")
@@ -41,16 +42,23 @@ def metadata_listener(ip, port):
         data, addr = sock.recvfrom(1024)
         try:
             msg = json.loads(data.decode())
-            ssrc = str(msg['ssrc'])
-            channel = msg['channel']
-            channel_map[ssrc] = channel
-            log(f"📡 Metadata received: {ssrc} -> {channel}", "ERROR")
-            # Asignar display: cantidad de canales activos + 10 (puedes ajustar el offset)
-            if HEADLESS:
-                display_num = len(channel_map) + 10
-                sock.sendto(str(display_num).encode(), addr)
-        except Exception as e:
-            print(f"Error parsing metadata: {e}")
+            if msg.get("cmd") == "GET_DISPLAY_NUM":
+                if HEADLESS:
+                    display_num = len(channel_map) + 10
+                    sock.sendto(str(display_num).encode(), addr)
+                    log(f"🖥️ Display solicitado por {addr}, asignado: {display_num}", "INFO")
+            # Si es metadata normal
+            elif "ssrc" in msg and "channel" in msg:
+                ssrc = str(msg['ssrc'])
+                channel = msg['channel']
+                channel_map[ssrc] = channel
+                log(f"📡 Metadata received: {ssrc} -> {channel}", "INFO")
+                # (Opcional) puedes responder algo si lo necesitas
+            else:
+                log(f"❌ Mensaje JSON no reconocido: {msg}", "ERROR")
+        except Exception:
+            # Si no es JSON, loguea el mensaje crudo
+            log(f"❌ Mensaje no JSON recibido: {data}", "ERROR")
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown_handler)
