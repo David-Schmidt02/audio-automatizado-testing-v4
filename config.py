@@ -8,11 +8,11 @@ SAMPLE_FORMAT = "int16"
 
 # IPs
 # Configuracion para el Cliente: Dirección IP y puerto del servidor RTP
-DEST_IP = "172.21.100.130"  
+DEST_IP = "192.168.0.82"  
 DEST_PORT = 6001
 METADATA_PORT = 6002
 # Configuracion para el Servidor: Dirección IP y puerto del cliente RTP
-LISTEN_IP = "172.21.100.130" # Debe ser la de la misma máquina Host 192.168.0.....
+LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001 # Puerto de escucha del cliente RTP, debe ser el mismo que DEST_PORT 
 NUM_DISPLAY_PORT = 6003
 
@@ -27,4 +27,3 @@ JITTER_BUFFER_SIZE = 20
 MAX_WAIT = 0.08  # Máximo tiempo de espera para procesar paquetes en el jitter buffer
 WAV_SEGMENT_SECONDS = 180  # Segundos de cada segmento WAV
 
-HEADLESS = None

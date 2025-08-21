@@ -75,7 +75,6 @@ def main():
     url = sys.argv[1]
     navigator_name = sys.argv[2]
     headless = sys.argv[3].lower() == 'true'
-    HEADLESS = headless
 
     # Variables globales para cleanup
     id_instance = random.randint(1000, 100000)
@@ -110,7 +109,7 @@ def main():
     send_channel_metadata(channel_name, id_instance)
     time.sleep(1)  # Esperar un poco para que el servidor procese la metadata
     log(f"✅ Canal extraído: {channel_name}", "INFO")
-    if HEADLESS:
+    if headless:
         XVFB_DISPLAY = return_display_number(id_instance)
         if not XVFB_DISPLAY:
             log("❌ No se pudo obtener el número de display", "ERROR")
