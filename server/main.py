@@ -1,4 +1,5 @@
 import threading
+import gc
 import signal
 import sys
 import os
@@ -24,6 +25,8 @@ def shutdown_handler(signum, frame):
         for client_id, client in clients.items():
             try:
                 client['wavefile'].close()
+                client['wavefile'] = None  # Eliminar referencia para liberar memoria
+                gc.collect()  # Forzar recolección de basura
                 log(f"Closed WAV for client {client_id}", "INFO")
             except Exception as e:
                 log(f"Error closing WAV file for client {client_id}: {e}", "ERROR")

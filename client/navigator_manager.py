@@ -157,7 +157,6 @@ class Navigator():
                 "--disable-signin-promo",
                 "--disable-software-rasterizer",  # Mejor que --enable-unsafe-swiftshader
                 "--disable-dev-shm-usage",  # Útil en entornos limitados (Docker/Linux)
-                "--no-sandbox",  # ¡Solo si es necesario y en headless!
             ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
@@ -185,9 +184,9 @@ class Navigator():
                 "--disable-accelerated-video-decode",  # Desactiva render de video
                 "--blink-settings=videoDisabled=true",  # Otra forma de desactivar video
                 "--disable-dev-shm-usage",  # Útil en entornos limitados (VM/Linux)
-                "--no-sandbox",
                 "--single-process",  # Reduce cantidad de procesos renderer
                 "--no-zygote",       # Evita procesos zombie
+                "--no-sandbox"
             ] + profile_args + [url]
         """
         if self.headless:

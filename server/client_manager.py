@@ -21,9 +21,10 @@ def create_wav_file(ssrc, wav_index = 0):
     base_dir = "records"
     # Obtener el nombre del canal desde channel_map, o usar el ssrc si no existe
     channel_name = channel_map.get(str(ssrc), str(ssrc))
-    log(f"📂 Creando directorio para canal: {channel_name}", "ERROR")
     client_dir = os.path.join(base_dir, channel_name)
-    os.makedirs(client_dir, exist_ok=True)
+    if not os.path.exists(client_dir):
+        os.makedirs(client_dir)
+        log(f"📂 Creando directorio para canal: {channel_name}", "ERROR")
     name_wav = os.path.join(client_dir, f"record-{time.strftime('%Y%m%d-%H%M%S')}-{ssrc}-{channel_name}-{wav_index}.wav")
     wf = wave.open(name_wav, "wb")
     wf.setnchannels(CHANNELS)
@@ -40,6 +41,8 @@ def handle_inactivity(client, ssrc):
     if not client['buffer'] and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
         try:
             client['wavefile'].close()
+            client['wavefile'] = None  # Eliminar referencia para liberar memoria
+            gc.collect()  # Forzar recolección de basura
             log(f"[Worker] Cliente {ssrc} inactivo por {INACTIVITY_TIMEOUT}s, WAV cerrado y recursos liberados.", "INFO")
         except Exception as e:
             log(f"[Worker] Error cerrando WAV de cliente {ssrc}: {e}", "ERROR")

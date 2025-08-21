@@ -18,6 +18,11 @@ def log_buffer_sizes_periodically():
                 log(f"[Buffer] Cliente {client_id}: tamaño del buffer = {buffer_size}", "DEBUG")
         # Log de objetos grandes en memoria (debug)
         all_objs = gc.get_objects()
-        wav_count = sum(1 for o in all_objs if hasattr(o, 'writeframes'))
-        log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "DEBUG")
+        wave_objs = [o for o in all_objs if hasattr(o, 'writeframes')]
+        wav_count = len(wave_objs)
+        log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "WARNING")
+        # Log extra: mostrar id y estado de cerrado de cada objeto wave
+        for i, w in enumerate(wave_objs):
+            closed = getattr(w, '_file', None) is None or getattr(w, 'closed', False)
+            log(f"[Mem][wave] id={id(w)} cerrado={closed} repr={repr(w)}", "DEBUG")
         time.sleep(30)
