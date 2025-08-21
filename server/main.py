@@ -59,7 +59,7 @@ def obtain_display_num_listener(ip, port):
     while True:
         data, addr = sock.recvfrom(1024)
         msg = json.loads(data.decode())
-        log(f"🎧 Received display number request: {msg}")
+        log(f"Received display request: {msg}", "INFO")
         ssrc = str(msg["ssrc"])
         log(f"🎧 Display request from client: {ssrc}", "INFO")
         if msg.get("cmd") == "GET_DISPLAY_NUM":
