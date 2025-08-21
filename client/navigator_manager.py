@@ -138,21 +138,26 @@ class Navigator():
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "google-chrome", "--disable-gpu",
+            "google-chrome",
+            "--disable-gpu",  # Si hay problemas con la GPU
             "--window-size=1920,1080",
+            "--incognito",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--disable-extensions", "--disable-gcm-registration",
-            "--enable-unsafe-swiftshader",
-            "--no-first-run", "--no-default-browser-check", 
-            "--disable-features=ChromeWhatsNewUI", "--disable-sync", 
-            "--disable-extensions", "--disable-component-update", 
-            "--disable-background-networking", "--disable-default-apps", 
-            "--disable-popup-blocking", "--disable-notifications",
-            "--disable-infobars", "--disable-translate", 
-            "--disable-signin-promo", "--incognito"
-            ] + profile_args + [url]
+            "--disable-extensions",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking",
+            "--disable-sync",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-infobars",
+            "--disable-signin-promo",
+            "--disable-software-rasterizer",  # Mejor que --enable-unsafe-swiftshader
+            "--disable-dev-shm-usage",  # Útil en entornos limitados (Docker/Linux)
+            "--no-sandbox",  # ¡Solo si es necesario y en headless!
+        ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
@@ -161,21 +166,26 @@ class Navigator():
         """Lanza Chromium en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [
-            "chromium", "--disable-gpu",
+            "google-chrome",
+            "--disable-gpu",  # Si hay problemas con la GPU
             "--window-size=1920,1080",
+            "--incognito",
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--disable-extensions", "--disable-gcm-registration",
-            "--enable-unsafe-swiftshader",
-            "--no-first-run", "--no-default-browser-check", 
-            "--disable-features=ChromeWhatsNewUI", "--disable-sync", 
-            "--disable-extensions", "--disable-component-update", 
-            "--disable-background-networking", "--disable-default-apps", 
-            "--disable-popup-blocking", "--disable-notifications",
-            "--disable-infobars", "--disable-translate", 
-            "--disable-signin-promo", "--incognito"
-        ] + profile_args + [url]
+            "--disable-extensions",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking",
+            "--disable-sync",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-infobars",
+            "--disable-signin-promo",
+            "--disable-software-rasterizer",  # Mejor que --enable-unsafe-swiftshader
+            "--disable-dev-shm-usage",  # Útil en entornos limitados (Docker/Linux)
+            "--no-sandbox",  # ¡Solo si es necesario y en headless!
+        ] + profile_args + [url] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
