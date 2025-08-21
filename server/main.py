@@ -9,7 +9,7 @@ import json
 from utils import log_buffer_sizes_periodically
 from rtp_server import udp_listener_fixed_jitter
 from client_manager import clients_lock, clients
-from metadata import channel_map
+from metadata import channel_map, channel_map_lock
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
@@ -43,7 +43,9 @@ def metadata_listener(ip, port):
         try:
             ssrc = str(msg['ssrc'])
             channel = msg['channel']
-            channel_map[ssrc] = channel
+            # Bloqueo para escritura
+            with channel_map_lock:
+                channel_map[ssrc] = channel
             log(f"📡 Metadata received: {ssrc} -> {channel}", "INFO")
         except Exception as e:
             log(f"❌ Error processing metadata: {e}", "ERROR")
@@ -61,7 +63,9 @@ def obtain_display_num_listener(ip, port):
         ssrc = str(msg["ssrc"])
         if msg.get("cmd") == "GET_DISPLAY_NUM":
             if HEADLESS:
-                display_num = len(channel_map) + 10
+                # Bloqueo para leer longitud del diccionario
+                with channel_map_lock:
+                    display_num = len(channel_map) + 10
                 sock.sendto(str(display_num).encode(), addr)
                 log(f"🖥️ Display solicitado por el cliente: {ssrc}, asignado: {display_num}", "INFO")
         else:

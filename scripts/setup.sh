@@ -1,3 +1,29 @@
+echo "=== Instalando Chromium clásico (ppa:xtradeb/apps) ==="
+sudo add-apt-repository ppa:xtradeb/apps -y
+sudo apt update
+sudo apt install chromium -y
+
+echo "=== Instalando Google Chrome estable ==="
+if ! command -v google-chrome &> /dev/null; then
+    wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/google-chrome-stable_current_amd64.deb
+    sudo apt install /tmp/google-chrome-stable_current_amd64.deb -y
+    rm /tmp/google-chrome-stable_current_amd64.deb
+else
+    echo "Google Chrome ya está instalado."
+fi
+
+echo "=== Instalando Firefox clásico (ppa:mozillateam/ppa) ==="
+sudo add-apt-repository ppa:mozillateam/ppa -y
+sudo apt update
+sudo apt install firefox -y
+echo "=== Eliminando versiones Snap de Firefox, Chrome y Chromium si existen ==="
+for pkg in firefox chromium chromium-browser google-chrome; do
+    if snap list | grep -q "^$pkg "; then
+        echo "Desinstalando Snap de $pkg..."
+        sudo snap remove --purge $pkg || true
+    fi
+done
+echo "✅ Versiones Snap eliminadas (si existían)"
 #!/bin/bash
 set -e
 
