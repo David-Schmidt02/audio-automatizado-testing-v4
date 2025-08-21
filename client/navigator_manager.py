@@ -189,8 +189,9 @@ class Navigator():
                 "--single-process",  # Reduce cantidad de procesos renderer
                 "--no-zygote",       # Evita procesos zombie
             ] + profile_args + [url]
+        """
         if self.headless:
-            cmd.insert(1, "--headless")
+            cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)
 
 
