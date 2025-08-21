@@ -10,7 +10,7 @@ import random
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, HEADLESS, NUM_DISPLAY_PORT
+from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, NUM_DISPLAY_PORT
 
 from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
@@ -64,7 +64,7 @@ def return_display_number(ssrc):
 
 def main():
     """Función principal."""
-    global audio_client_session, navigator_manager, XVFB_DISPLAY, HEADLESS
+    global audio_client_session, navigator_manager, XVFB_DISPLAY
 
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:

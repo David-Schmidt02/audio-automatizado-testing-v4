@@ -143,10 +143,16 @@ class Navigator():
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--disable-extensions",
-            "--disable-gcm-registration",
-            "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
-        ] + profile_args + [url]
+            "--disable-extensions", "--disable-gcm-registration",
+            "--enable-unsafe-swiftshader",
+            "--no-first-run", "--no-default-browser-check", 
+            "--disable-features=ChromeWhatsNewUI", "--disable-sync", 
+            "--disable-extensions", "--disable-component-update", 
+            "--disable-background-networking", "--disable-default-apps", 
+            "--disable-popup-blocking", "--disable-notifications",
+            "--disable-infobars", "--disable-translate", 
+            "--disable-signin-promo", "--incognito"
+            ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
         return subprocess.Popen(cmd, env=env)
@@ -160,9 +166,15 @@ class Navigator():
             "--autoplay-policy=no-user-gesture-required",
             "--disable-notifications",
             "--disable-popup-blocking",
-            "--disable-extensions",
-            "--disable-gcm-registration",
-            "--no-first-run", "--no-default-browser-check", "--disable-features=ChromeWhatsNewUI", "--disable-sync", "--disable-extensions", "--disable-component-update", "--disable-background-networking", "--disable-default-apps", "--disable-popup-blocking", "--disable-notifications", "--disable-infobars", "--disable-translate", "--disable-signin-promo", "--incognito"
+            "--disable-extensions", "--disable-gcm-registration",
+            "--enable-unsafe-swiftshader",
+            "--no-first-run", "--no-default-browser-check", 
+            "--disable-features=ChromeWhatsNewUI", "--disable-sync", 
+            "--disable-extensions", "--disable-component-update", 
+            "--disable-background-networking", "--disable-default-apps", 
+            "--disable-popup-blocking", "--disable-notifications",
+            "--disable-infobars", "--disable-translate", 
+            "--disable-signin-promo", "--incognito"
         ] + profile_args + [url]
         if self.headless:
             cmd.insert(1, "--headless")
