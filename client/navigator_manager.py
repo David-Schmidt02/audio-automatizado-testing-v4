@@ -167,7 +167,7 @@ class Navigator():
         """Lanza Chromium en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
         cmd = [ "chromium",
-                #"--disable-gpu",  # Si hay problemas con la GPU
+                #"--disable-gpu",  # No hace falta con la aceleración 3D desactivada
                 "--window-size=1920,1080",
                 "--incognito",
                 "--autoplay-policy=no-user-gesture-required",
@@ -176,16 +176,18 @@ class Navigator():
                 "--disable-extensions",
                 "--no-first-run",
                 "--no-default-browser-check",
-                "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking",
-                "--disable-sync",
+                "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking,Sync",
                 "--disable-component-update",
                 "--disable-default-apps",
                 "--disable-translate", 
                 "--disable-infobars",
                 "--disable-signin-promo",
-                "--disable-software-rasterizer",  # Mejor que --enable-unsafe-swiftshader
-                "--disable-dev-shm-usage",  # Útil en entornos limitados (Docker/Linux)
-                "--no-sandbox",  # ¡Solo si es necesario y en headless!
+                "--disable-accelerated-video-decode",  # Desactiva render de video
+                "--blink-settings=videoDisabled=true",  # Otra forma de desactivar video
+                "--disable-dev-shm-usage",  # Útil en entornos limitados (VM/Linux)
+                "--no-sandbox",
+                "--single-process",  # Reduce cantidad de procesos renderer
+                "--no-zygote",       # Evita procesos zombie
             ]
         + profile_args + [url]
         if self.headless:
