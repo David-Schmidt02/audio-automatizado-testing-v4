@@ -15,10 +15,12 @@ from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, NUM_DISPLAY_
 
 from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
-from xvfb_manager import start_xvfb, stop_xvfb
+from xvfb_manager import Xvfb_manager
 
 audio_client_session = None
 navigator_manager = None
+xvfb_manager = None
+HEADLESS = False
 
 def signal_handler(sig, frame):
     audio_client_session.cleanup()
@@ -65,6 +67,7 @@ def return_display_number(ssrc):
 
 def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=7200):
     import psutil
+    global HEADLESS
     start_time = time.time()
     try:
         p = psutil.Process(browser_process.pid)
@@ -81,6 +84,8 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
                 # Aquí puedes lanzar una nueva instancia y luego:
                 audio_client_session.cleanup()
                 navigator_manager.cleanup()
+                if HEADLESS:
+                    xvfb_manager.stop_xvfb()
                 break
             time.sleep(60)
         except psutil.NoSuchProcess:
@@ -104,6 +109,8 @@ def main():
     url = sys.argv[1]
     navigator_name = sys.argv[2]
     headless = sys.argv[3].lower() == 'true'
+    if headless:
+        HEADLESS = True
 
     # Variables globales para cleanup
     id_instance = random.randint(1000, 100000)
@@ -147,11 +154,14 @@ def main():
             sys.exit(1)
         else:
             log(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO")
-        xvfb_proc = start_xvfb(XVFB_DISPLAY)
-        if not xvfb_proc:
+
+        xvfb_manager = Xvfb_manager(XVFB_DISPLAY) 
+        xvfb_process = xvfb_manager.start_xvfb()
+
+        if not xvfb_process:
             audio_client_session.cleanup()
             navigator_manager.cleanup()
-            stop_xvfb(xvfb_proc)
+            xvfb_manager.stop_xvfb()
             sys.exit(1)
 
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
@@ -161,7 +171,7 @@ def main():
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
-        stop_xvfb(xvfb_proc)
+        xvfb_manager.stop_xvfb()
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
@@ -175,7 +185,7 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 500, 300)) # Ejemplo, superar los 500mb o los 300s o 5 min
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 500, 600)) # Ejemplo, superar los 500mb o los 600s o 10 min
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
@@ -187,10 +197,13 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         pass
-    
-    audio_client_session.cleanup()
-    navigator_manager.cleanup()
-    stop_xvfb(xvfb_proc)
+
+    if not thread_monitor_browser.is_alive():
+        log("❌ El navegador ya se cerró por timeout o por consumo de RAM. Saliendo...", "WARNING")
+    else:
+        audio_client_session.cleanup()
+        navigator_manager.cleanup()
+        xvfb_manager.stop_xvfb()
 
 if __name__ == "__main__":
     main()
