@@ -23,6 +23,7 @@ class Navigator():
 
         self.random_id = random.randint(10000, 99999)
 
+
     def create_navigator_profile(self):
         """Crea un directorio de perfil para el navegador."""
         if self.navigator_name == "Firefox":
@@ -104,6 +105,7 @@ class Navigator():
         log(f"📁 Perfil de Chromium creado: {self.navigator_profile_dir}", "INFO")
         return self.navigator_profile_dir
 
+
     def launch_navigator(self, url, display_num):
         """Lanza el navegador especificado con el sink preconfigurado y perfil ya creado."""
         log(f"🚀 Launching {self.navigator_name} with URL: {url}", "INFO")
@@ -180,6 +182,7 @@ class Navigator():
             cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)
 
+
     def terminate_child_processes(self, browser_process):
         if browser_process.poll() is None:  # el padre sigue vivo
             try:
@@ -232,8 +235,7 @@ class Navigator():
                     self.browser_process.kill()
                 except Exception:
                     pass
-
-        
+    
     def limpiar_perfil_navegador(self):
         log("🔥 Cleaning up navegador profile...", "WARN")
         if self.navigator_profile_dir and os.path.exists(self.navigator_profile_dir):

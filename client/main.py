@@ -68,7 +68,6 @@ def return_display_number(ssrc):
 
 def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=7200):
     import psutil
-    global HEADLESS
     start_time = time.time()
     try:
         p = psutil.Process(browser_process.pid)
@@ -77,20 +76,17 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
         log("❌ Error al obtener el proceso del navegador", "ERROR")
         return  # Proceso ya terminó
 
-    while True:
+    while not shutdown_event.is_set():
         try:
             ram_mb = p.memory_info().rss / 1024 / 1024
             if ram_mb > max_ram_mb or (time.time() - start_time) > max_runtime_sec:
-                print(f"Reiniciando navegador por RAM ({ram_mb:.1f} MB) o tiempo.")
-                # Aquí puedes lanzar una nueva instancia y luego:
-                audio_client_session.cleanup()
-                navigator_manager.cleanup()
-                if HEADLESS:
-                    xvfb_manager.stop_xvfb()
+                log(f"🛑 Navegador excedió RAM ({ram_mb:.1f} MB) o tiempo. Solicitando shutdown...", "WARN")
+                shutdown_event.set()
                 break
-            time.sleep(60)
+            time.sleep(10)
         except psutil.NoSuchProcess:
             log("❌ El proceso del navegador ya no existe.", "WARN")
+            shutdown_event.set()
             break  # El navegador ya terminó
 
 def levantar_script_nuevamente():
@@ -191,8 +187,8 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    #thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) 
-    #thread_monitor_browser.start()
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) 
+    thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
     log("Press Ctrl+C to stop...", "INFO")
@@ -205,24 +201,21 @@ def main():
         shutdown_event.set()
 
     # Cleanup solo una vez, fuera del bucle
-    audio_client_session.cleanup()
-    navigator_manager.cleanup()
-    if HEADLESS:
-        xvfb_manager.stop_xvfb()
-    log("✅ Todos los programas cerrados. Saliendo...", "INFO")
-
-    """
     if not thread_monitor_browser.is_alive():
         log("❌ El navegador ya se cerró por timeout o por consumo de RAM. Saliendo...", "WARN")
     else:
-        log ("Cerrando los programas desde el main principal...","INFO")
+        log("🛑 Shutdown solicitado por el usuario o señal externa. Cerrando programas...", "INFO")
+
+    if audio_client_session:
         log("Cerrando audio_client_session...", "INFO")
         audio_client_session.cleanup()
+    if navigator_manager:
         log("Cerrando navigator_manager...", "INFO")
         navigator_manager.cleanup()
-        if headless:
-            xvfb_manager.stop_xvfb()
+    if HEADLESS and xvfb_manager:
+        log("Cerrando xvfb_manager...", "INFO")
+        xvfb_manager.stop_xvfb()
     log("✅ Todos los programas cerrados. Saliendo...", "INFO")
-    """
+    
 if __name__ == "__main__":
     main()

@@ -92,7 +92,6 @@ class AudioClientSession:
         except Exception as e:
             log(f"❌ Error in continuous streaming: {e}", "ERROR")
         
-
     def start_audio_recording(self, pulse_device):
         """Inicia el hilo de grabación de audio."""
 
