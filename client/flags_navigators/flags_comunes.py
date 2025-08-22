@@ -19,14 +19,14 @@ CHROME_CHROMIUM_COMMON_FLAGS = [
 
 GRAPHICS_MIN_FLAGS = [
     "--disable-gpu", # Desactivar GPU -> Util si no se posee GPU
-    "--disable-accelerated-2d-canvas",  # Desactivar aceleración de canvas 2D
+    #"--disable-accelerated-2d-canvas",  # Desactivar aceleración de canvas 2D
     "--disable-accelerated-video-decode",  # Desactivar aceleración de decodificación de video
     "--disable-accelerated-video",  # Desactivar aceleración de video
-    "--disable-3d-apis",  # Desactivar APIs 3D
+    #"--disable-3d-apis",  # Desactivar APIs 3D
     "--disable-webgl",  # Desactivar WebGL
     "--disable-webgl2",  # Desactivar WebGL2
-    "--disable-features=CanvasOopRasterization,WebGLDraftExtensions,WebGL2ComputeContext",
-    "--single-process",
+    #"--disable-features=CanvasOopRasterization,WebGLDraftExtensions,WebGL2ComputeContext",
+    #"--single-process",
     # "--no-zygote",  # Solo si tienes problemas de procesos zombie
 ]
 
