@@ -185,6 +185,7 @@ class Navigator():
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
             log("🔥 Terminating navegador...", "INFO")
+            log(f"Proceso de navegador: {self.browser_process.pid}", "INFO")
             try:
                 # Intentar terminar el proceso principal
                 self.browser_process.terminate()
@@ -216,6 +217,7 @@ class Navigator():
                         log(f"⚠️ Error terminando procesos hijos: {e}", "ERROR")
             except Exception as e:
                 log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
+                log(f"Proceso del navegador: {self.browser_process.pid}", "INFO")
                 try:
                     self.browser_process.kill()
                 except Exception:
