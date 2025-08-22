@@ -209,19 +209,22 @@ class Navigator():
                 try:
                     parent = psutil.Process(self.browser_process.pid)
                     children = parent.children(recursive=True)
-                    for child in children:
-                        log(f"⚠️ Killing child process {child.pid}", "WARNING")
-                        try:
-                            child.terminate()
-                        except Exception:
-                            pass
-                    gone, alive = psutil.wait_procs(children, timeout=3)
-                    for p in alive:
-                        log(f"⚠️ Forcibly killing child process {p.pid}", "WARNING")
-                        try:
-                            p.kill()
-                        except Exception:
-                            pass
+                    if children:
+                        for child in children:
+                            log(f"⚠️ Killing child process {child.pid}", "WARNING")
+                            try:
+                                child.terminate()
+                            except Exception:
+                                pass
+                        gone, alive = psutil.wait_procs(children, timeout=3)
+                        for p in alive:
+                            log(f"⚠️ Forcibly killing child process {p.pid}", "WARNING")
+                            try:
+                                p.kill()
+                            except Exception:
+                                pass
+                    else:
+                        log("No child processes found to terminate.", "WARNING")
                 except ImportError:
                     log("psutil no está instalado, no se pueden matar procesos hijos.", "WARNING")
                 except Exception as e:

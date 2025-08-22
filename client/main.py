@@ -89,6 +89,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
                 break
             time.sleep(60)
         except psutil.NoSuchProcess:
+            log("❌ El proceso del navegador ya no existe.", "WARNING")
             break  # El navegador ya terminó
 
 def levantar_script_nuevamente():

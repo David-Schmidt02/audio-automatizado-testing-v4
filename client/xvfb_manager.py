@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import sys
+import threading
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
@@ -56,7 +57,7 @@ class Xvfb_manager():
         return xvfb_proc
 
 
-    def stop_xvfb(self):
+    def stop_xvfb(self,):
         """
         Detiene el servidor X virtual (Xvfb).
         
