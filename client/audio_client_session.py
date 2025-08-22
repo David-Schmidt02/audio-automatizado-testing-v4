@@ -80,17 +80,18 @@ class AudioClientSession:
                             break
 
                     if process.poll() is None:
-                        log("🛑 Stopping FFmpeg...", "INFO")
+                        log("Stopping FFmpeg...", "INFO")
                         process.terminate()
                         try:
                             process.communicate(timeout=5)
+                            log("✅ FFmpeg stopped successfully.", "SUCCESS")
                         except Exception:
                             pass
                 except Exception as e:
                     log(f"❌ Error in continuous streaming: {e}", "ERROR")
         except Exception as e:
             log(f"❌ Error in continuous streaming: {e}", "ERROR")
-
+        
 
     def start_audio_recording(self, pulse_device):
         """Inicia el hilo de grabación de audio."""
@@ -108,7 +109,7 @@ class AudioClientSession:
 
     def cleanup(self):
         """Limpieza de recursos al finalizar."""
-        log("\n Cleaning up Audio Client Session", "WARN")
+        log("Cleaning up Audio Client Session", "WARN")
 
         # Señalar a todos los hilos que paren
         self.stop_event.set()

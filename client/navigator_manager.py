@@ -184,7 +184,7 @@ class Navigator():
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
-            log("🔥 Terminating navegador...", "WARNING")
+            log("🔥 Terminating navegador...", "WARN")
             log(f"Proceso de navegador: {self.browser_process.pid}", "INFO")
             try:
                 # Intentar terminar el proceso principal
@@ -225,7 +225,7 @@ class Navigator():
                     pass
         
     def limpiar_perfil_navegador(self):
-        log("🔥 Cleaning up navegador profile...", "WARNING")
+        log("🔥 Cleaning up navegador profile...", "WARN")
         if self.navigator_profile_dir and os.path.exists(self.navigator_profile_dir):
             try:
                 import shutil
