@@ -27,8 +27,6 @@ def signal_handler(sig, frame):
     if not shutdown_event.is_set():
         log("🛑 Received shutdown signal. Cleaning up...", "WARN")
         shutdown_event.set()
-        
-    sys.exit(0)
 
 def obtain_display_num(ssrc):
     pass
