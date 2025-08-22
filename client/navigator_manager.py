@@ -206,7 +206,8 @@ class Navigator():
                     p.kill()
                 except Exception:
                     pass
-
+        else:
+            log("No child processes to terminate.", "INFO")
 
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
