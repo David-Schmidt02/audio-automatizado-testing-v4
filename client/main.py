@@ -28,9 +28,6 @@ def signal_handler(sig, frame):
         log("🛑 Received shutdown signal. Cleaning up...", "WARN")
         shutdown_event.set()
 
-def obtain_display_num(ssrc):
-    pass
-
 def extract_channel_name(url):
     import re
     match = re.search(r'youtube\.com/@([^/]+)', url)
@@ -79,8 +76,9 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
     while not shutdown_event.is_set():
         try:
             ram_mb = p.memory_info().rss / 1024 / 1024
-            if ram_mb > max_ram_mb or (time.time() - start_time) > max_runtime_sec:
-                log(f"🛑 Navegador excedió RAM ({ram_mb:.1f} MB) o tiempo. Solicitando shutdown...", "WARN")
+            if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 10:
+                log(f"🛑 Navegador cerca del límite de RAM ({ram_mb:.1f} MB) o tiempo. Relanzando script...", "WARN")
+                threading.Thread(target=levantar_script_nuevamente, daemon=True).start()
                 shutdown_event.set()
                 break
             time.sleep(10)
@@ -90,7 +88,13 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             break  # El navegador ya terminó
 
 def levantar_script_nuevamente():
-    pass
+    import subprocess
+    import sys
+    import time
+    args = [sys.executable] + sys.argv
+    log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos: {' '.join(args)}", "INFO")
+    time.sleep(10)
+    subprocess.Popen(args)
 
 # Al lanzar el navegador:
 # browser_process = subprocess.Popen(...)
@@ -187,7 +191,7 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) 
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 150)) 
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
