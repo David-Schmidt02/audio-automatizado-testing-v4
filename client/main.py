@@ -10,7 +10,7 @@ import random
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 from my_logger import log
-from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, HEADLESS, NUM_DISPLAY_PORT
+from config import DEST_IP, DEST_PORT, METADATA_PORT, XVFB_DISPLAY, NUM_DISPLAY_PORT
 
 from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
@@ -62,9 +62,35 @@ def return_display_number(ssrc):
         return None
 
 
+def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=7200):
+    import psutil
+    start_time = time.time()
+    try:
+        p = psutil.Process(browser_process.pid)
+    except Exception:
+        return  # Proceso ya terminó
+
+    while True:
+        try:
+            ram_mb = p.memory_info().rss / 1024 / 1024
+            if ram_mb > max_ram_mb or (time.time() - start_time) > max_runtime_sec:
+                print(f"Reiniciando navegador por RAM ({ram_mb:.1f} MB) o tiempo.")
+                # Aquí puedes lanzar una nueva instancia y luego:
+                audio_client_session.cleanup()
+                navigator_manager.cleanup()
+                break
+            time.sleep(60)
+        except psutil.NoSuchProcess:
+            break  # El navegador ya terminó
+
+# Al lanzar el navegador:
+# browser_process = subprocess.Popen(...)
+# threading.Thread(target=monitor_browser_process, args=(browser_process,)).start()
+
+
 def main():
     """Función principal."""
-    global audio_client_session, navigator_manager, XVFB_DISPLAY
+    global audio_client_session, navigator_manager, XVFB_DISPLAY, HEADLESS
 
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:
@@ -144,6 +170,10 @@ def main():
     print("🎵 Iniciando captura de audio...")
     audio_client_session.start_audio_recording(sink_name)
     
+    # 6.1 Iniciar Hilo que controla los mb del browser
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 500, 300)) # Ejemplo, superar los 500mb o los 300s o 5 min
+    thread_monitor_browser.start()
+
     print("🎯 System initialized successfully!")
     print("Press Ctrl+C to stop...")
     
