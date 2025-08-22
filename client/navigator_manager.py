@@ -194,6 +194,7 @@ class Navigator():
                 except Exception:
                     pass
                 # Intentar terminar procesos hijos si existen (requiere psutil)
+                log(f"Obteniendo proceso padre", "INFO")
                 parent = psutil.Process(self.browser_process.pid)
                 log(f"Buscando procesos hijos", "INFO")
                 children = parent.children(recursive=True)
