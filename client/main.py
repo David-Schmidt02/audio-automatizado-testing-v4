@@ -91,6 +91,9 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
         except psutil.NoSuchProcess:
             break  # El navegador ya terminó
 
+def levantar_script_nuevamente():
+    pass
+
 # Al lanzar el navegador:
 # browser_process = subprocess.Popen(...)
 # threading.Thread(target=monitor_browser_process, args=(browser_process,)).start()
@@ -98,7 +101,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
 
 def main():
     """Función principal."""
-    global audio_client_session, navigator_manager, XVFB_DISPLAY, HEADLESS
+    global audio_client_session, navigator_manager, xvfb_manager, XVFB_DISPLAY, HEADLESS
 
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:
@@ -185,7 +188,7 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 500, 600)) # Ejemplo, superar los 500mb o los 600s o 10 min
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) # Ejemplo, superar los 1000mb o los 600s o 10 min
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
