@@ -184,7 +184,7 @@ class Navigator():
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
-            log("🔥 Terminating navegador...", "INFO")
+            log("🔥 Terminating navegador...", "WARNING")
             log(f"Proceso de navegador: {self.browser_process.pid}", "INFO")
             try:
                 # Intentar terminar el proceso principal
@@ -195,6 +195,7 @@ class Navigator():
                     pass
                 # Intentar terminar procesos hijos si existen (requiere psutil)
                 parent = psutil.Process(self.browser_process.pid)
+                log(f"Buscando procesos hijos", "INFO")
                 children = parent.children(recursive=True)
                 if not children:
                     log("No child processes found to terminate.", "WARN")
@@ -224,6 +225,7 @@ class Navigator():
                     pass
         
     def limpiar_perfil_navegador(self):
+        log("🔥 Cleaning up navegador profile...", "WARNING")
         if self.navigator_profile_dir and os.path.exists(self.navigator_profile_dir):
             try:
                 import shutil

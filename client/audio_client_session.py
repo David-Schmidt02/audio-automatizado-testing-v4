@@ -108,7 +108,7 @@ class AudioClientSession:
 
     def cleanup(self):
         """Limpieza de recursos al finalizar."""
-        log("\n🛑 Received shutdown signal. Cleaning up Audio Client Session", "WARN")
+        log("\n Cleaning up Audio Client Session", "WARN")
 
         # Señalar a todos los hilos que paren
         self.stop_event.set()
