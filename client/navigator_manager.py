@@ -185,8 +185,8 @@ class Navigator():
                 "--blink-settings=videoDisabled=true",  # Otra forma de desactivar video
                 "--disable-dev-shm-usage",  # Útil en entornos limitados (VM/Linux)
                 "--single-process",  # Reduce cantidad de procesos renderer
-                "--no-zygote",       # Evita procesos zombie
-                "--no-sandbox"
+                #"--no-zygote",       # Evita procesos zombie
+                #"--no-sandbox"
             ] + profile_args + [url]
         """
         if self.headless:
