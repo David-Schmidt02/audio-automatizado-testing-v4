@@ -9,6 +9,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
 from my_logger import log
+from flags_navigators.flags_comunes import CHROME_CHROMIUM_COMMON_FLAGS, GRAPHICS_MIN_FLAGS, PRODUCTION_FLAGS
 
 class Navigator():
     def __init__(self, name, sink_name, headless):
@@ -137,6 +138,7 @@ class Navigator():
     def launch_chrome(self, url, env):
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
+
         cmd = [
                 "google-chrome", 
                 #"--disable-gpu",  # Si hay problemas con la GPU
@@ -165,29 +167,14 @@ class Navigator():
     def launch_chromium(self, url, env):
         """Lanza Chromium en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
-        cmd = [ "chromium",
-                #"--disable-gpu",  # No hace falta con la aceleración 3D desactivada
-                "--window-size=1920,1080",
-                "--incognito",
-                "--autoplay-policy=no-user-gesture-required",
-                "--disable-notifications",
-                "--disable-popup-blocking",
-                "--disable-extensions",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking,Sync",
-                "--disable-component-update",
-                "--disable-default-apps",
-                "--disable-translate", 
-                "--disable-infobars",
-                "--disable-signin-promo",
-                "--disable-accelerated-video-decode",  # Desactiva render de video
-                "--blink-settings=videoDisabled=true",  # Otra forma de desactivar video
-                "--disable-dev-shm-usage",  # Útil en entornos limitados (VM/Linux)
-                "--single-process",  # Reduce cantidad de procesos renderer
-                #"--no-zygote",       # Evita procesos zombie
-                #"--no-sandbox"
-            ] + profile_args + [url]
+        cmd = (
+            ["chromium"]
+            + CHROME_CHROMIUM_COMMON_FLAGS
+            + GRAPHICS_MIN_FLAGS
+            + PRODUCTION_FLAGS
+            + profile_args
+            + [url]
+        )
         """
         if self.headless:
             cmd.insert(1, "--headless")"""
