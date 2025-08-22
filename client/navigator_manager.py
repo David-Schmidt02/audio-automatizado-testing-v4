@@ -180,50 +180,58 @@ class Navigator():
             cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)
 
+    def terminate_child_processes(self, browser_process):
+        if browser_process.poll() is None:  # el padre sigue vivo
+            try:
+                parent = psutil.Process(browser_process.pid)
+                children = parent.children(recursive=True)
+            except (psutil.NoSuchProcess, psutil.ZombieProcess):
+                return
+
+            if not children:
+                log("No child processes found to terminate.", "WARN")
+                return
+
+            for child in children:
+                log(f"⚠️ Killing child process {child.pid}", "WARN")
+                try:
+                    child.terminate()
+                except Exception:
+                    pass
+
+            gone, alive = psutil.wait_procs(children, timeout=3)
+            for p in alive:
+                log(f"⚠️ Forcibly killing child process {p.pid}", "WARN")
+                try:
+                    p.kill()
+                except Exception:
+                    pass
+
 
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
             log("🔥 Terminating navegador...", "WARN")
             log(f"Proceso de navegador: {self.browser_process.pid}", "INFO")
+
             try:
-                # Intentar terminar el proceso principal
+                # 1. primero los hijos
+                self.terminate_child_processes(self.browser_process)
+
+                # 2. ahora el padre
                 self.browser_process.terminate()
                 try:
                     self.browser_process.communicate(timeout=5)
                 except Exception:
                     pass
-                # Intentar terminar procesos hijos si existen (requiere psutil)
-                log(f"Obteniendo proceso padre", "INFO")
-                parent = psutil.Process(self.browser_process.pid)
-                log(f"Buscando procesos hijos", "INFO")
-                children = parent.children(recursive=True)
-                if not children:
-                    log("No child processes found to terminate.", "WARN")
-                else:
-                    try:
-                        for child in children:
-                            log(f"⚠️ Killing child process {child.pid}", "WARN")
-                            try:
-                                child.terminate()
-                            except Exception:
-                                pass
-                        gone, alive = psutil.wait_procs(children, timeout=3)
-                        for p in alive:
-                            log(f"⚠️ Forcibly killing child process {p.pid}", "WARN")
-                            try:
-                                p.kill()
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        log(f"⚠️ Error terminando procesos hijos: {e}", "ERROR")
+
             except Exception as e:
                 log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
-                log(f"Proceso del navegador: {self.browser_process.pid}", "INFO")
                 try:
                     self.browser_process.kill()
                 except Exception:
                     pass
+
         
     def limpiar_perfil_navegador(self):
         log("🔥 Cleaning up navegador profile...", "WARN")
