@@ -23,8 +23,9 @@ def log_buffer_sizes_periodically():
         wave_open = [w for w in wave_objs if not (getattr(w, '_file', None) is None or getattr(w, 'closed', False))]
         wav_count = len(wave_open)
         log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "WARN")
-        # Log extra: mostrar id y estado de cerrado de cada objeto wave
-        for i, w in enumerate(wave_objs):
+
+        """for i, w in enumerate(wave_objs):
             closed = getattr(w, '_file', None) is None or getattr(w, 'closed', False)
             log(f"[Mem][wave] id={id(w)} cerrado={closed} repr={repr(w)}", "DEBUG")
+        """
         time.sleep(30)
