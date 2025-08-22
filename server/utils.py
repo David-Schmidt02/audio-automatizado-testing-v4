@@ -28,8 +28,14 @@ def log_buffer_sizes_periodically():
         for i, w in enumerate(wave_objs):
             closed = getattr(w, '_file', None) is None or getattr(w, 'closed', False)
             log(f"[Mem][wave] id={id(w)} cerrado={closed} repr={repr(w)}", "DEBUG")
+            if closed:
+                referrers = gc.get_referrers(w)
+                log(f"[Mem][wave] id={id(w)} REFERENCIADO POR: {[type(r) for r in referrers]}", "DEBUG")
+                # Si quieres ver más detalle:
+                for ref in referrers:
+                    log(f"    Ref: {repr(ref)[:200]}", "DEBUG")
 
-        log(" ---------------------------"*20, "WARN")
+        log(" ---------------------------"*3, "WARN")
         for w in wave_open:
             print(f"Referencias a wave id={id(w)}:")
             refs = gc.get_referrers(w)
