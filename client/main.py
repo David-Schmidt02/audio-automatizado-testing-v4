@@ -25,6 +25,9 @@ HEADLESS = False
 def signal_handler(sig, frame):
     audio_client_session.cleanup()
     navigator_manager.cleanup()
+    if HEADLESS:
+        xvfb_manager.stop_xvfb()
+
     sys.exit(0)
 
 def obtain_display_num(ssrc):
@@ -203,6 +206,7 @@ def main():
     except KeyboardInterrupt:
         pass
 
+    """
     if not thread_monitor_browser.is_alive():
         log("❌ El navegador ya se cerró por timeout o por consumo de RAM. Saliendo...", "WARNING")
     else:
@@ -214,6 +218,6 @@ def main():
         if headless:
             xvfb_manager.stop_xvfb()
     log("✅ Todos los programas cerrados. Saliendo...", "INFO")
-
+    """
 if __name__ == "__main__":
     main()
