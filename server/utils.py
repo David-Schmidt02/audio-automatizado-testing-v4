@@ -17,12 +17,6 @@ def log_buffer_sizes_periodically():
                 buffer_size = len(client['buffer'])
                 log(f"[Buffer] Cliente {client_id}: tamaño del buffer = {buffer_size}", "DEBUG")
 
-        for w in wave_open:
-            print(f"Referencias a wave id={id(w)}:")
-            refs = gc.get_referrers(w)
-            for ref in refs:
-                print(f"  - {type(ref)}: {repr(ref)[:200]}")
-
         # Log de objetos grandes en memoria (debug)
         all_objs = gc.get_objects()
         wave_objs = [o for o in all_objs if hasattr(o, 'writeframes')]
@@ -34,4 +28,12 @@ def log_buffer_sizes_periodically():
         for i, w in enumerate(wave_objs):
             closed = getattr(w, '_file', None) is None or getattr(w, 'closed', False)
             log(f"[Mem][wave] id={id(w)} cerrado={closed} repr={repr(w)}", "DEBUG")
+
+        log(" ---------------------------"*20, "WARN")
+        for w in wave_open:
+            print(f"Referencias a wave id={id(w)}:")
+            refs = gc.get_referrers(w)
+            for ref in refs:
+                print(f"  - {type(ref)}: {repr(ref)[:200]}")
+
         time.sleep(30)
