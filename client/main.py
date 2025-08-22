@@ -4,6 +4,7 @@ import signal
 import time
 import threading
 import subprocess
+import threading
 
 import random
 
@@ -67,7 +68,9 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
     start_time = time.time()
     try:
         p = psutil.Process(browser_process.pid)
+        log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
     except Exception:
+        log("❌ Error al obtener el proceso del navegador", "ERROR")
         return  # Proceso ya terminó
 
     while True:
@@ -162,20 +165,21 @@ def main():
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
-    print(f"⏳ Esperando que {navigator_name} se inicie completamente...")
+    log(f"⏳ Esperando que {navigator_name} se inicie completamente...", "INFO")
     time.sleep(5)
 
 
     # 6. Iniciar captura y grabación de audio
-    print("🎵 Iniciando captura de audio...")
-    audio_client_session.start_audio_recording(sink_name)
+    log("🎵 Iniciando captura de audio...", "INFO")
+    thread_audio_capture = audio_client_session.start_audio_recording(sink_name)
     
     # 6.1 Iniciar Hilo que controla los mb del browser
+    log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
     thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 500, 300)) # Ejemplo, superar los 500mb o los 300s o 5 min
     thread_monitor_browser.start()
 
-    print("🎯 System initialized successfully!")
-    print("Press Ctrl+C to stop...")
+    log("🎯 System initialized successfully!", "INFO")
+    log("Press Ctrl+C to stop...", "INFO")
     
     # 7. Esperar señal de shutdown
     try:
