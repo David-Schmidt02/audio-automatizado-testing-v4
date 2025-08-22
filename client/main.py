@@ -175,7 +175,8 @@ def main():
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
-        xvfb_manager.stop_xvfb()
+        if headless:
+            xvfb_manager.stop_xvfb()
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
@@ -207,7 +208,8 @@ def main():
     else:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
-        xvfb_manager.stop_xvfb()
+        if headless:
+            xvfb_manager.stop_xvfb()
 
 if __name__ == "__main__":
     main()
