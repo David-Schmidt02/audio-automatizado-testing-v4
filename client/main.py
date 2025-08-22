@@ -21,13 +21,15 @@ audio_client_session = None
 navigator_manager = None
 xvfb_manager = None
 HEADLESS = False
+shutdown_event = threading.Event()
+
 
 def signal_handler(sig, frame):
+    shutdown_event.set()
     audio_client_session.cleanup()
     navigator_manager.cleanup()
     if HEADLESS:
         xvfb_manager.stop_xvfb()
-        
     sys.exit(0)
 
 def obtain_display_num(ssrc):
@@ -68,39 +70,30 @@ def return_display_number(ssrc):
         return None
 
 
-def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=7200):
+def monitor_browser_process(browser_process, shutdown_event, max_ram_mb=500, max_runtime_sec=7200):
     import psutil
-    global HEADLESS
     start_time = time.time()
     try:
         p = psutil.Process(browser_process.pid)
         log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
     except Exception:
         log("❌ Error al obtener el proceso del navegador", "ERROR")
-        return  # Proceso ya terminó
+        return
 
-    while True:
+    while not shutdown_event.is_set():
         try:
             ram_mb = p.memory_info().rss / 1024 / 1024
             if ram_mb > max_ram_mb or (time.time() - start_time) > max_runtime_sec:
-                print(f"Reiniciando navegador por RAM ({ram_mb:.1f} MB) o tiempo.")
-                # Aquí puedes lanzar una nueva instancia y luego:
-                audio_client_session.cleanup()
-                navigator_manager.cleanup()
-                if HEADLESS:
-                    xvfb_manager.stop_xvfb()
+                log(f"Reiniciando navegador por RAM ({ram_mb:.1f} MB) o tiempo.", "WARNING")
+                shutdown_event.set()
                 break
             time.sleep(60)
         except psutil.NoSuchProcess:
             log("❌ El proceso del navegador ya no existe.", "WARN")
-            break  # El navegador ya terminó
+            break
 
 def levantar_script_nuevamente():
     pass
-
-# Al lanzar el navegador:
-# browser_process = subprocess.Popen(...)
-# threading.Thread(target=monitor_browser_process, args=(browser_process,)).start()
 
 
 def main():
@@ -193,18 +186,19 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    #thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) 
-    #thread_monitor_browser.start()
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, shutdown_event, 1000, 600))
+    thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
     log("Press Ctrl+C to stop...", "INFO")
     
     # 7. Esperar señal de shutdown
     try:
-        while True:
+        while not shutdown_event.is_set():
             time.sleep(1)
     except KeyboardInterrupt:
-        pass
+        shutdown_event.set()
+        signal_handler(None, None)
 
     """
     if not thread_monitor_browser.is_alive():
