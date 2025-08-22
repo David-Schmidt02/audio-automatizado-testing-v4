@@ -27,7 +27,7 @@ def signal_handler(sig, frame):
     navigator_manager.cleanup()
     if HEADLESS:
         xvfb_manager.stop_xvfb()
-
+        
     sys.exit(0)
 
 def obtain_display_num(ssrc):
@@ -193,8 +193,8 @@ def main():
     
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) # Ejemplo, superar los 1000mb o los 600s o 10 min
-    thread_monitor_browser.start()
+    #thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 600)) 
+    #thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
     log("Press Ctrl+C to stop...", "INFO")
