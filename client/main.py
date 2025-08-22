@@ -78,7 +78,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             ram_mb = p.memory_info().rss / 1024 / 1024
             if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 10:
                 log(f"🛑 Navegador cerca del límite de RAM ({ram_mb:.1f} MB) o tiempo. Relanzando script...", "WARN")
-                threading.Thread(target=levantar_script_nuevamente, daemon=True).start()
+                threading.Thread(target=levantar_script_nueva_terminal, daemon=True).start()
                 shutdown_event.set()
                 break
             time.sleep(10)
@@ -87,14 +87,11 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             shutdown_event.set()
             break  # El navegador ya terminó
 
-def levantar_script_nuevamente():
-    import subprocess
-    import sys
-    import time
+def levantar_script_nueva_terminal():
     args = [sys.executable] + sys.argv
-    log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos: {' '.join(args)}", "INFO")
+    log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos en nueva terminal: {' '.join(args)}", "INFO")
     time.sleep(10)
-    subprocess.Popen(args)
+    subprocess.Popen(['gnome-terminal', '--'] + args)
 
 # Al lanzar el navegador:
 # browser_process = subprocess.Popen(...)
