@@ -92,7 +92,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
                 break
             time.sleep(60)
         except psutil.NoSuchProcess:
-            log("❌ El proceso del navegador ya no existe.", "WARNING")
+            log("❌ El proceso del navegador ya no existe.", "WARN")
             break  # El navegador ya terminó
 
 def levantar_script_nuevamente():
@@ -208,7 +208,7 @@ def main():
 
     """
     if not thread_monitor_browser.is_alive():
-        log("❌ El navegador ya se cerró por timeout o por consumo de RAM. Saliendo...", "WARNING")
+        log("❌ El navegador ya se cerró por timeout o por consumo de RAM. Saliendo...", "WARN")
     else:
         log ("Cerrando los programas desde el main principal...","INFO")
         log("Cerrando audio_client_session...", "INFO")

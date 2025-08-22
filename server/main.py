@@ -18,7 +18,7 @@ from my_logger import log
 from config import METADATA_PORT, LISTEN_IP, NUM_DISPLAY_PORT
 
 def shutdown_handler(signum, frame):
-    log("\n🛑 Shutting down server...", "WARNING")
+    log("\n🛑 Shutting down server...", "WARN")
 
     with clients_lock:
         log("💾 Closing all WAV files...", "INFO")

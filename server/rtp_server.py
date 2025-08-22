@@ -31,7 +31,7 @@ def handle_rtp_packet(client, seq_num, payload):
     """
     with client['lock']:
         if seq_num in client['buffer']:
-            log(f"[RTP] Paquete fuera de orden para cliente {client['wavefile'].name}: seq={seq_num} ya recibido", "WARNING")
+            log(f"[RTP] Paquete fuera de orden para cliente {client['wavefile'].name}: seq={seq_num} ya recibido", "WARN")
             return False
         client['buffer'][seq_num] = payload
         client['last_time'] = time.time()

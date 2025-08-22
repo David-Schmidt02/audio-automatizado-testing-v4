@@ -206,29 +206,27 @@ class Navigator():
                 except Exception:
                     pass
                 # Intentar terminar procesos hijos si existen (requiere psutil)
-                try:
-                    parent = psutil.Process(self.browser_process.pid)
-                    children = parent.children(recursive=True)
-                    if children:
+                parent = psutil.Process(self.browser_process.pid)
+                children = parent.children(recursive=True)
+                if not children:
+                    log("No child processes found to terminate.", "WARN")
+                else:
+                    try:
                         for child in children:
-                            log(f"⚠️ Killing child process {child.pid}", "WARNING")
+                            log(f"⚠️ Killing child process {child.pid}", "WARN")
                             try:
                                 child.terminate()
                             except Exception:
                                 pass
                         gone, alive = psutil.wait_procs(children, timeout=3)
                         for p in alive:
-                            log(f"⚠️ Forcibly killing child process {p.pid}", "WARNING")
+                            log(f"⚠️ Forcibly killing child process {p.pid}", "WARN")
                             try:
                                 p.kill()
                             except Exception:
                                 pass
-                    else:
-                        log("No child processes found to terminate.", "WARNING")
-                except ImportError:
-                    log("psutil no está instalado, no se pueden matar procesos hijos.", "WARNING")
-                except Exception as e:
-                    log(f"⚠️ Error terminando procesos hijos: {e}", "ERROR")
+                    except Exception as e:
+                        log(f"⚠️ Error terminando procesos hijos: {e}", "ERROR")
             except Exception as e:
                 log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
                 try:
@@ -241,7 +239,7 @@ class Navigator():
             try:
                 import shutil
                 shutil.rmtree(self.navigator_profile_dir)
-                log(f"🗑️ Perfil Navegador eliminado: {self.navigator_profile_dir}", "INFO")
+                log(f"🗑️ Perfil Navegador eliminado: {self.navigator_profile_dir}", "SUCCESS")
             except Exception as e:
                 log(f"⚠️ Error eliminando perfil Navegador: {e}", "ERROR")
 

@@ -20,7 +20,7 @@ def log_buffer_sizes_periodically():
         all_objs = gc.get_objects()
         wave_objs = [o for o in all_objs if hasattr(o, 'writeframes')]
         wav_count = len(wave_objs)
-        log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "WARNING")
+        log(f"[Mem] Objetos tipo wave abiertos: {wav_count}", "WARN")
         # Log extra: mostrar id y estado de cerrado de cada objeto wave
         for i, w in enumerate(wave_objs):
             closed = getattr(w, '_file', None) is None or getattr(w, 'closed', False)
