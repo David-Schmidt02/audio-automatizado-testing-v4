@@ -120,12 +120,18 @@ def minimizar_ventana_por_pid(pid, delay=5):
     import time
     import subprocess
     time.sleep(delay)
-    print_subprocess_tree(pid)
     so = platform.system()
     if so == 'Linux':
         try:
             # Busca la ventana por PID y la minimiza
-            subprocess.run(['xdotool', 'search', '--pid', str(pid), 'windowminimize'], check=True)
+                result = subprocess.run(['xdotool', 'search', '--pid', str(pid)], capture_output=True, text=True)
+                window_ids = result.stdout.strip().split()
+                if window_ids:
+                    # Minimiza solo la primera ventana encontrada
+                    subprocess.run(['xdotool', 'windowminimize', window_ids[0]], check=True)
+                    log(f"Ventana minimizada: {window_ids[0]}", "INFO")
+                else:
+                    log(f"No se encontró ventana para el PID {pid}", "WARN")
         except Exception as e:
             log(f"No se pudo minimizar la ventana del navegador (PID {pid}): {e}", "WARN")
     else:
