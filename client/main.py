@@ -112,10 +112,11 @@ def print_subprocess_tree(pid):
     except Exception as e:
         print(f"Error: {e}")
 
-def minimizar_ventana_por_pid(pid, delay=5, palabra_clave='Chromium'):
+
+def minimizar_ventana_por_pid_channel_name(pid, delay=5, channel_name=None):
     """
-    Minimiza la ventana asociada a un PID específico que contenga la palabra_clave en el título.
-    Si no encuentra ninguna, no minimiza nada. Solo Linux con xdotool.
+    Minimiza la ventana asociada a un PID específico que contenga el nombre del canal en el título.
+    Si no encuentra ninguna, minimiza la primera ventana encontrada como fallback. Solo Linux con xdotool.
     """
     import time
     import subprocess
@@ -123,31 +124,38 @@ def minimizar_ventana_por_pid(pid, delay=5, palabra_clave='Chromium'):
     time.sleep(delay)
     so = platform.system()
     if so == 'Linux':
-        _minimizar_ventana_con_palabra_clave(pid, palabra_clave)
+        try:
+            result = subprocess.run(['xdotool', 'search', '--pid', str(pid)], capture_output=True, text=True)
+            window_ids = result.stdout.strip().split()
+            if not window_ids:
+                log(f"No se encontró ventana para el PID {pid}", "WARN")
+                return
+            # Buscar y minimizar todas las ventanas que contengan el nombre del canal
+            minimizadas = 0
+            for wid in window_ids:
+                name_result = subprocess.run(['xdotool', 'getwindowname', wid], capture_output=True, text=True)
+                titulo = name_result.stdout.strip()
+                log(f"Ventana encontrada: {wid} - Título: {titulo}", "INFO")
+                if channel_name and channel_name.lower() in titulo.lower():
+                    try:
+                        subprocess.run(['xdotool', 'windowminimize', wid], check=True)
+                        log(f"Ventana minimizada: {wid} - Título: {titulo}", "INFO")
+                        minimizadas += 1
+                    except Exception as e:
+                        log(f"No se pudo minimizar la ventana {wid}: {e}", "WARN")
+            if minimizadas == 0:
+                # Si no encontró por canal, minimizar la primera
+                try:
+                    subprocess.run(['xdotool', 'windowminimize', window_ids[0]], check=True)
+                    log(f"Ventana minimizada (fallback): {window_ids[0]}", "INFO")
+                except Exception as e:
+                    log(f"No se pudo minimizar la ventana fallback {window_ids[0]}: {e}", "WARN")
+        except Exception as e:
+            log(f"No se pudo minimizar la ventana del navegador (PID {pid}): {e}", "WARN")
     else:
         log("Minimizar por PID solo implementado en Linux con xdotool.", "INFO")
     return
 
-def _minimizar_ventana_con_palabra_clave(pid, palabra_clave):
-    import subprocess
-    try:
-        result = subprocess.run(['xdotool', 'search', '--pid', str(pid)], capture_output=True, text=True)
-        window_ids = result.stdout.strip().split()
-        if not window_ids:
-            log(f"No se encontró ventana para el PID {pid}", "WARN")
-            return
-        for wid in window_ids:
-            # Obtener el título de la ventana
-            name_result = subprocess.run(['xdotool', 'getwindowname', wid], capture_output=True, text=True)
-            titulo = name_result.stdout.strip()
-            log(f"Ventana encontrada: {wid} - Título: {titulo}", "INFO")
-            if palabra_clave.lower() in titulo.lower():
-                subprocess.run(['xdotool', 'windowminimize', wid], check=True)
-                log(f"Ventana minimizada: {wid} - Título: {titulo}", "INFO")
-                return
-        log(f"No se encontró ventana con la palabra clave '{palabra_clave}' para el PID {pid}", "WARN")
-    except Exception as e:
-        log(f"No se pudo minimizar la ventana del navegador (PID {pid}): {e}", "WARN")
 
 def main():
     """Función principal."""
