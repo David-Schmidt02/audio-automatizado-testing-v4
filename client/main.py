@@ -80,7 +80,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
     while not shutdown_event.is_set():
         try:
             ram_mb = p.memory_info().rss / 1024 / 1024
-            if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 10:
+            if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 15:
                 log(f"🛑 Navegador cerca del límite de RAM ({ram_mb:.1f} MB) o tiempo. Relanzando script...", "WARN")
                 log(f"Memoria al finalizar: {ram_mb:.1f} MB", "INFO")
                 shutdown_reason['auto'] = True
@@ -94,29 +94,6 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
 
 
 def levantar_script_nueva_terminal():
-    # Para relanzar en una nueva terminal, descomenta el siguiente bloque:
-    # import shutil
-    # terminales = [
-    #     ('gnome-terminal', ['--']),
-    #     ('xfce4-terminal', ['-e']),
-    #     ('konsole', ['-e']),
-    #     ('xterm', ['-e']),
-    #     ('lxterminal', ['-e']),
-    #     ('mate-terminal', ['-e']),
-    #     ('x-terminal-emulator', ['-e'])
-    # ]
-    # args = [sys.executable] + sys.argv
-    # log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos en nueva terminal: {' '.join(args)}", "INFO")
-    # time.sleep(10)
-    # for term, flag in terminales:
-    #     if shutil.which(term):
-    #         try:
-    #             subprocess.Popen([term] + flag + args)
-    #             return
-    #         except Exception as e:
-    #             log(f"❌ Error lanzando terminal {term}: {e}", "ERROR")
-    # log("❌ No se encontró una terminal gráfica instalada.", "ERROR")
-
     # Relanzamiento en la misma ventana:
     import os
     import sys
@@ -125,10 +102,24 @@ def levantar_script_nueva_terminal():
     time.sleep(2)
     os.execv(sys.executable, args)
 
-# Al lanzar el navegador:
-# browser_process = subprocess.Popen(...)
-# threading.Thread(target=monitor_browser_process, args=(browser_process,)).start()
-
+def minimizar_ventana_por_pid(pid, delay=5):
+    import platform
+    """
+    Minimiza la ventana asociada a un PID específico después de 'delay' segundos (solo Linux con xdotool).
+    """
+    import time
+    import subprocess
+    time.sleep(delay)
+    so = platform.system()
+    if so == 'Linux':
+        try:
+            # Busca la ventana por PID y la minimiza
+            subprocess.run(['xdotool', 'search', '--pid', str(pid), 'windowminimize'], check=True)
+        except Exception as e:
+            log(f"No se pudo minimizar la ventana del navegador (PID {pid}): {e}", "WARN")
+    else:
+        log("Minimizar por PID solo implementado en Linux con xdotool.", "INFO")
+    return
 
 def main():
     """Función principal."""
@@ -198,9 +189,14 @@ def main():
             xvfb_manager.stop_xvfb()
             sys.exit(1)
 
+
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log(f"Proceso de navegador: {navigator_process}", "INFO")
+
+    # Minimizar la ventana del navegador tras 5 segundos (solo Linux con xdotool)
+    if navigator_process:
+        threading.Thread(target=minimizar_ventana_por_pid, args=(navigator_process.pid, 5), daemon=True).start()
 
     if not navigator_process:
         audio_client_session.cleanup()
