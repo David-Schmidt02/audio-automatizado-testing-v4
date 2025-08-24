@@ -1,3 +1,27 @@
+def log_sink_reconnection(sink_name, extra_info=""):
+    import subprocess
+    import os
+    import datetime
+    from my_logger import log
+    # Loguea el estado de sinks
+    result = subprocess.run(['pactl', 'list', 'short', 'sinks'], capture_output=True, text=True)
+    sinks = result.stdout.strip().split('\n')
+    sink_line = None
+    for line in sinks:
+        if sink_name in line:
+            sink_line = line
+            log(f"[PULSE][RECONNECT] Sink reconectado: {line} | PID: {os.getpid()} {extra_info}", "WARN")
+    # Loguea los sink-inputs activos
+    result_inputs = subprocess.run(['pactl', 'list', 'short', 'sink-inputs'], capture_output=True, text=True)
+    # Guardar en archivo dedicado
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"pulseaudio_{sink_name}.log")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"\n[{now}] [PULSE][RECONNECT] Sink reconectado: {sink_line if sink_line else 'NO ENCONTRADO'} | PID: {os.getpid()} {extra_info}\n")
+        f.write(f"[{now}] [PULSE][RECONNECT] Sink-inputs activos:\n{result_inputs.stdout}\n")
+    log(f"[PulseAudio] Estado guardado en {log_path}", "INFO")
 
 import os
 import random
@@ -28,6 +52,7 @@ class AudioClientSession:
 
     def create_pulse_sink(self):
         """Crea un sink de audio único."""
+
         self.sink_name = f"audio-sink-{random.randint(10000, 99999)}"
         log(f"🎧 Creating audio sink: {self.sink_name}", "INFO")
 
@@ -39,6 +64,9 @@ class AudioClientSession:
 
             self.module_id = result.stdout.strip()
             log(f"✅ Audio sink created with module ID: {self.module_id}", "INFO")
+
+            # Loguear reconexión/creación de sink
+            log_sink_reconnection(self.sink_name, extra_info="[create_pulse_sink]")
 
             return self.sink_name
 
