@@ -93,28 +93,36 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
 
 
 def levantar_script_nueva_terminal():
-    import shutil
+    # Para relanzar en una nueva terminal, descomenta el siguiente bloque:
+    # import shutil
+    # terminales = [
+    #     ('gnome-terminal', ['--']),
+    #     ('xfce4-terminal', ['-e']),
+    #     ('konsole', ['-e']),
+    #     ('xterm', ['-e']),
+    #     ('lxterminal', ['-e']),
+    #     ('mate-terminal', ['-e']),
+    #     ('x-terminal-emulator', ['-e'])
+    # ]
+    # args = [sys.executable] + sys.argv
+    # log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos en nueva terminal: {' '.join(args)}", "INFO")
+    # time.sleep(10)
+    # for term, flag in terminales:
+    #     if shutil.which(term):
+    #         try:
+    #             subprocess.Popen([term] + flag + args)
+    #             return
+    #         except Exception as e:
+    #             log(f"❌ Error lanzando terminal {term}: {e}", "ERROR")
+    # log("❌ No se encontró una terminal gráfica instalada.", "ERROR")
+
+    # Relanzamiento en la misma ventana:
+    import os
+    import sys
     args = [sys.executable] + sys.argv
-    log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos en nueva terminal: {' '.join(args)}", "INFO")
-    time.sleep(10)
-    # Buscar terminal disponible
-    terminales = [
-        ('gnome-terminal', ['--']),
-        ('xfce4-terminal', ['-e']),
-        ('konsole', ['-e']),
-        ('xterm', ['-e']),
-        ('lxterminal', ['-e']),
-        ('mate-terminal', ['-e']),
-        ('x-terminal-emulator', ['-e'])
-    ]
-    for term, flag in terminales:
-        if shutil.which(term):
-            try:
-                subprocess.Popen([term] + flag + args)
-                return
-            except Exception as e:
-                log(f"❌ Error lanzando terminal {term}: {e}", "ERROR")
-    log("❌ No se encontró una terminal gráfica instalada.", "ERROR")
+    log(f"[RELAUNCH] Relanzando en la misma terminal: {' '.join(args)}", "INFO")
+    time.sleep(2)
+    os.execv(sys.executable, args)
 
 # Al lanzar el navegador:
 # browser_process = subprocess.Popen(...)
