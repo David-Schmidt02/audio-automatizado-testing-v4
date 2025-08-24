@@ -25,6 +25,7 @@ HEADLESS = False
 shutdown_event = threading.Event()
 # Variable para distinguir si el shutdown fue por relanzamiento automático o por señal del usuario
 shutdown_reason = {'auto': False, 'sigint': False}
+ssrc = None
 
 def signal_handler(sig, frame):
     if not shutdown_event.is_set():
@@ -132,10 +133,20 @@ def minimizar_ventana_por_id(window_id, delay=5):
     else:
         log("Minimizar por ID solo implementado en Linux con xdotool.", "INFO")
 
+def log_and_save(message, level):
+    global ssrc
+    log(message, level)
+    log_dir = "client/logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = f"{log_dir}/{ssrc}-client.log"
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"[{level}] {message}\n")
+
 
 def main():
     """Función principal."""
-    global audio_client_session, navigator_manager, xvfb_manager, XVFB_DISPLAY, HEADLESS
+    global audio_client_session, navigator_manager, xvfb_manager, XVFB_DISPLAY, HEADLESS, ssrc
 
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:
@@ -151,6 +162,7 @@ def main():
 
     # Variables globales para cleanup
     id_instance = random.randint(1000, 100000)
+    ssrc = id_instance
 
     # Controlador de sesión de audio
     audio_client_session = AudioClientSession(id_instance)

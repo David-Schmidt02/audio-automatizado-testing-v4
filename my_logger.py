@@ -34,17 +34,3 @@ def log(message, level="INFO"):
     }
     color = color_map.get(level, Colors.WHITE)
     print(f"{color}[{timestamp}] [{level}] {message}{Colors.END}")
-
-    # Guardar en archivo logs/server.log (sobrescribe al iniciar)
-    log_dir = "logs"
-    log_file = os.path.join(log_dir, "server.log")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    # Si es la primera vez, abre en modo 'w', luego en modo 'a'
-    if not hasattr(log, "_file_initialized"):
-        mode = "w"
-        log._file_initialized = True
-    else:
-        mode = "a"
-    with open(log_file, mode, encoding="utf-8") as f:
-        f.write(f"[{timestamp}] [{level}] {message}\n")
