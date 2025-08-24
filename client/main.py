@@ -232,7 +232,7 @@ def main():
 
     # Minimizar la ventana del navegador tras 5 segundos (solo Linux con xdotool)
     if navigator_process:
-        threading.Thread(target=minimizar_ventana_por_pid, args=(navigator_process.pid, 5), daemon=True).start()
+        threading.Thread(target=minimizar_ventana_por_pid_channel_name, args=(navigator_process.pid, 5), daemon=True).start()
 
     if not navigator_process:
         audio_client_session.cleanup()
