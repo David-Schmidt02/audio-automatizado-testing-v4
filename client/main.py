@@ -17,15 +17,19 @@ from client.audio_client_session import AudioClientSession
 from navigator_manager import Navigator
 from xvfb_manager import Xvfb_manager
 
+
 audio_client_session = None
 navigator_manager = None
 xvfb_manager = None
 HEADLESS = False
 shutdown_event = threading.Event()
+# Variable para distinguir si el shutdown fue por relanzamiento automático o por señal del usuario
+shutdown_reason = {'auto': False, 'sigint': False}
 
 def signal_handler(sig, frame):
     if not shutdown_event.is_set():
         log("🛑 Received shutdown signal. Cleaning up...", "WARN")
+        shutdown_reason['sigint'] = True
         shutdown_event.set()
 
 def extract_channel_name(url):
@@ -78,7 +82,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             ram_mb = p.memory_info().rss / 1024 / 1024
             if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 10:
                 log(f"🛑 Navegador cerca del límite de RAM ({ram_mb:.1f} MB) o tiempo. Relanzando script...", "WARN")
-                threading.Thread(target=levantar_script_nueva_terminal, daemon=True).start()
+                shutdown_reason['auto'] = True
                 shutdown_event.set()
                 break
             time.sleep(10)
@@ -87,11 +91,30 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             shutdown_event.set()
             break  # El navegador ya terminó
 
+
 def levantar_script_nueva_terminal():
+    import shutil
     args = [sys.executable] + sys.argv
     log(f"[RELAUNCH] Lanzando nuevo proceso en 10 segundos en nueva terminal: {' '.join(args)}", "INFO")
     time.sleep(10)
-    subprocess.Popen(['gnome-terminal', '--'] + args)
+    # Buscar terminal disponible
+    terminales = [
+        ('gnome-terminal', ['--']),
+        ('xfce4-terminal', ['-e']),
+        ('konsole', ['-e']),
+        ('xterm', ['-e']),
+        ('lxterminal', ['-e']),
+        ('mate-terminal', ['-e']),
+        ('x-terminal-emulator', ['-e'])
+    ]
+    for term, flag in terminales:
+        if shutil.which(term):
+            try:
+                subprocess.Popen([term] + flag + [' '.join(args)])
+                return
+            except Exception as e:
+                log(f"❌ Error lanzando terminal {term}: {e}", "ERROR")
+    log("❌ No se encontró una terminal gráfica instalada.", "ERROR")
 
 # Al lanzar el navegador:
 # browser_process = subprocess.Popen(...)
@@ -186,19 +209,22 @@ def main():
     log("🎵 Iniciando captura de audio...", "INFO")
     thread_audio_capture = audio_client_session.start_audio_recording(sink_name)
     
+
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 150)) 
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 150))
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
     log("Press Ctrl+C to stop...", "INFO")
     
+
     # 7. Esperar señal de shutdown
     try:
         while not shutdown_event.is_set():
             time.sleep(1)
     except KeyboardInterrupt:
+        shutdown_reason['sigint'] = True
         shutdown_event.set()
 
     # Cleanup solo una vez, fuera del bucle
@@ -217,6 +243,13 @@ def main():
         log("Cerrando xvfb_manager...", "INFO")
         xvfb_manager.stop_xvfb()
     log("✅ Todos los programas cerrados. Saliendo...", "INFO")
-    
+
+    # Si el shutdown fue por RAM/tiempo (no por Ctrl+C), relanzar
+    if shutdown_reason['auto'] and not shutdown_reason['sigint']:
+        levantar_script_nueva_terminal()
+
+    # Forzar salida de todos los hilos y procesos hijos
+    os._exit(0)
+
 if __name__ == "__main__":
     main()
