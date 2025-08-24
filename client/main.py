@@ -110,7 +110,7 @@ def levantar_script_nueva_terminal():
     for term, flag in terminales:
         if shutil.which(term):
             try:
-                subprocess.Popen([term] + flag + [' '.join(args)])
+                subprocess.Popen([term] + flag + args)
                 return
             except Exception as e:
                 log(f"❌ Error lanzando terminal {term}: {e}", "ERROR")
@@ -212,7 +212,7 @@ def main():
 
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 150))
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 30))
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
