@@ -102,6 +102,16 @@ def levantar_script_nueva_terminal():
     time.sleep(2)
     os.execv(sys.executable, args)
 
+def print_subprocess_tree(pid):
+    import psutil
+    try:
+        parent = psutil.Process(pid)
+        print(f"Proceso principal: {parent.pid} - {parent.name()}")
+        for child in parent.children(recursive=True):
+            print(f"  Hijo: {child.pid} - {child.name()}")
+    except Exception as e:
+        print(f"Error: {e}")
+
 def minimizar_ventana_por_pid(pid, delay=5):
     import platform
     """
@@ -110,6 +120,7 @@ def minimizar_ventana_por_pid(pid, delay=5):
     import time
     import subprocess
     time.sleep(delay)
+    print_subprocess_tree(pid)
     so = platform.system()
     if so == 'Linux':
         try:
