@@ -82,6 +82,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             ram_mb = p.memory_info().rss / 1024 / 1024
             if ram_mb > max_ram_mb - 20 or (time.time() - start_time) > max_runtime_sec - 10:
                 log(f"🛑 Navegador cerca del límite de RAM ({ram_mb:.1f} MB) o tiempo. Relanzando script...", "WARN")
+                log(f"Memoria al finalizar: {ram_mb:.1f} MB", "INFO")
                 shutdown_reason['auto'] = True
                 shutdown_event.set()
                 break
@@ -220,7 +221,7 @@ def main():
 
     # 6.1 Iniciar Hilo que controla los mb del browser
     log("🔍 Iniciando monitor de uso de RAM del navegador...", "INFO")
-    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 30))
+    thread_monitor_browser = threading.Thread(target=monitor_browser_process, args=(navigator_process, 1000, 300))
     thread_monitor_browser.start()
 
     log("🎯 System initialized successfully!", "INFO")
