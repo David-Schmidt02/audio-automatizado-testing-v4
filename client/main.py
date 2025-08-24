@@ -113,9 +113,9 @@ def print_subprocess_tree(pid):
         print(f"Error: {e}")
 
 
-def minimizar_ventana_por_pid_channel_name(pid, delay=5, channel_name=None):
+def minimizar_ventana_por_id(window_id, delay=5):
     """
-    Minimiza la ventana asociada a un PID específico que contenga el nombre del canal en el título.
+    Minimiza la ventana asociada a un ID específico que contenga el nombre del canal en el título.
     Si no encuentra ninguna, minimiza la primera ventana encontrada como fallback. Solo Linux con xdotool.
     """
     import time
@@ -125,36 +125,12 @@ def minimizar_ventana_por_pid_channel_name(pid, delay=5, channel_name=None):
     so = platform.system()
     if so == 'Linux':
         try:
-            result = subprocess.run(['xdotool', 'search', '--pid', str(pid)], capture_output=True, text=True)
-            window_ids = result.stdout.strip().split()
-            if not window_ids:
-                log(f"No se encontró ventana para el PID {pid}", "WARN")
-                return
-            # Buscar y minimizar todas las ventanas que contengan el nombre del canal
-            minimizadas = 0
-            for wid in window_ids:
-                name_result = subprocess.run(['xdotool', 'getwindowname', wid], capture_output=True, text=True)
-                titulo = name_result.stdout.strip()
-                log(f"Ventana encontrada: {wid} - Título: {titulo}", "INFO")
-                if channel_name and channel_name.lower() in titulo.lower():
-                    try:
-                        subprocess.run(['xdotool', 'windowminimize', wid], check=True)
-                        log(f"Ventana minimizada: {wid} - Título: {titulo}", "INFO")
-                        minimizadas += 1
-                    except Exception as e:
-                        log(f"No se pudo minimizar la ventana {wid}: {e}", "WARN")
-            if minimizadas == 0:
-                # Si no encontró por canal, minimizar la primera
-                try:
-                    subprocess.run(['xdotool', 'windowminimize', window_ids[0]], check=True)
-                    log(f"Ventana minimizada (fallback): {window_ids[0]}", "INFO")
-                except Exception as e:
-                    log(f"No se pudo minimizar la ventana fallback {window_ids[0]}: {e}", "WARN")
+            subprocess.run(['xdotool', 'windowminimize', window_id], check=True)
+            log(f"Ventana minimizada: {window_id}", "INFO")
         except Exception as e:
-            log(f"No se pudo minimizar la ventana del navegador (PID {pid}): {e}", "WARN")
+            log(f"No se pudo minimizar la ventana {window_id}: {e}", "WARN")
     else:
-        log("Minimizar por PID solo implementado en Linux con xdotool.", "INFO")
-    return
+        log("Minimizar por ID solo implementado en Linux con xdotool.", "INFO")
 
 
 def main():
@@ -230,9 +206,16 @@ def main():
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log(f"Proceso de navegador: {navigator_process}", "INFO")
 
+    time.sleep(1)  # darle tiempo a que se abra la ventana
+    result = subprocess.run(
+        ["xdotool", "getactivewindow"],
+        capture_output=True, text=True
+    )
+    window_id = result.stdout.strip()
+
     # Minimizar la ventana del navegador tras 5 segundos (solo Linux con xdotool)
     if navigator_process:
-        threading.Thread(target=minimizar_ventana_por_pid_channel_name, args=(navigator_process.pid, 5), daemon=True).start()
+        threading.Thread(target=minimizar_ventana_por_id, args=(window_id, 5), daemon=True).start()
 
     if not navigator_process:
         audio_client_session.cleanup()
