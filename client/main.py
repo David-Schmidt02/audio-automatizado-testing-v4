@@ -141,7 +141,7 @@ def main():
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:
         print(f"Usage: {sys.argv[0]} <URL> <Navegador> <Headless>")
-        print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'Firefox/Chrome/Chromium' True")
+        print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'Chrome/Chromium' True")
         sys.exit(1)
 
     url = sys.argv[1]
@@ -151,7 +151,7 @@ def main():
         HEADLESS = True
 
     # Variables globales para cleanup
-    id_instance = random.randint(1000, 100000)
+    id_instance = random.randint(10000, 100000)
 
     # Controlador de sesión de audio
     audio_client_session = AudioClientSession(id_instance)

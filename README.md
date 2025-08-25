@@ -26,7 +26,7 @@ Cliente (Linux)          Servidor (Linux/Windows)
 ### Cliente (Linux)
 - **Ubuntu Server 24.04+**
 - **Python 3.12+** y **python3.12-venv**
-- **Firefox** o **Google Chrome**
+- **Chromium** o **Google Chrome**
 - **PulseAudio**
 - **FFmpeg**
 - **Git**
@@ -181,7 +181,7 @@ export MOZ_DISABLE_CONTENT_SANDBOX=1
 
 ## 🔄 Flujo de Datos
 
-1. **Cliente**: Firefox/Chrome reproduce stream → PulseAudio captura → FFmpeg segmenta → RTP envía
+1. **Cliente**: Chromium/Chrome reproduce stream → PulseAudio captura → FFmpeg segmenta → RTP envía
 2. **Red**: Paquetes RTP via UDP
 3. **Servidor**: Recibe RTP → Extrae payload → Agrupa por SSRC → Genera WAV
 
