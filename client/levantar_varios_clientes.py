@@ -19,10 +19,15 @@ def main():
     for url in urls:
         print(f"Processing {url}")
         # Construir los argumentos como string para bash
-        python_exec = sys.executable
-        script_path = os.path.abspath("main.py")
-        cmd = f"source ~/Desktop/Soflex/audio-test-env/bin/activate && {python_exec} {script_path} '{url}' '{headless}'"
-        subprocess.Popen([
-            "gnome-terminal", "--", "bash", "-c", cmd
-        ])
+        #python_exec = sys.executable # se obtiene la ruta absoluta
+        python_exec = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/python")
+        script_path = os.path.abspath("main.py") # convierte el main.py en una ruta absoluta
+        #cmd = f"source ~/Desktop/Soflex/audio-test-env/bin/activate && {python_exec} {script_path} '{url}' '{headless}'"
+        #subprocess.Popen([
+        #    "gnome-terminal", "--", "bash", "-c", cmd
+        #])
+        subprocess.Popen([python_exec, script_path, url, headless])
         time.sleep(2)
+
+if __name__ == "__main__":
+    main()
