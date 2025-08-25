@@ -10,7 +10,7 @@ from rtp_client import send_rtp_stream_to_server
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
-from my_logger import log
+from my_logger import log, log_and_save
 from config import BUFFER_SIZE
 
 
@@ -29,7 +29,7 @@ class AudioClientSession:
         """Crea un sink de audio único."""
 
         self.sink_name = f"audio-sink-{random.randint(10000, 99999)}"
-        log(f"🎧 Creating audio sink: {self.sink_name}", "INFO")
+        log_and_save(f"🎧 Creating audio sink: {self.sink_name}", "INFO", self.id_instance)
 
         try:
             result = subprocess.run([
@@ -38,18 +38,18 @@ class AudioClientSession:
             ], capture_output=True, text=True, check=True)
 
             self.module_id = result.stdout.strip()
-            log(f"✅ Audio sink created with module ID: {self.module_id}", "INFO")
+            log_and_save(f"✅ Audio sink created with module ID: {self.module_id}", "INFO", self.id_instance)
 
             return self.sink_name
 
         except subprocess.CalledProcessError as e:
-            log(f"❌ Failed to create audio sink: {e}", "ERROR")
+            log_and_save(f"❌ Failed to create audio sink: {e}", "ERROR", self.id_instance)
             return None
 
 
     def record_audio(self, pulse_device):
         """Graba y envía un stream continuo de audio usando ffmpeg sin segmentación."""
-        log("🎵 Starting continuous audio streaming (sin segmentación)", "INFO")
+        log_and_save("🎵 Starting continuous audio streaming (sin segmentación)", "INFO", self.id_instance)
 
         try:
             cmd = [
@@ -65,7 +65,7 @@ class AudioClientSession:
                 "pipe:1"
             ]
 
-            log(f"🚀 Starting ffmpeg streaming...", "INFO")
+            log_and_save(f"🚀 Starting ffmpeg streaming...", "INFO", self.id_instance)
 
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
                 try:
@@ -76,27 +76,27 @@ class AudioClientSession:
                         try:
                             send_rtp_stream_to_server(data, self.id_instance)
                         except Exception as e:
-                            log(f"⚠️ Error enviando audio: {e}", "ERROR")
+                            log_and_save(f"⚠️ Error enviando audio: {e}", "ERROR", self.id_instance)
                             break
 
                     if process.poll() is None:
-                        log("Stopping FFmpeg...", "INFO")
+                        log_and_save("Stopping FFmpeg...", "INFO", self.id_instance)
                         process.terminate()
                         try:
                             process.communicate(timeout=5)
-                            log("✅ FFmpeg stopped successfully.", "SUCCESS")
+                            log_and_save("✅ FFmpeg stopped successfully.", "SUCCESS", self.id_instance)
                         except Exception:
                             pass
                 except Exception as e:
-                    log(f"❌ Error in continuous streaming: {e}", "ERROR")
+                    log_and_save(f"❌ Error in continuous streaming: {e}", "ERROR", self.id_instance)
         except Exception as e:
-            log(f"❌ Error in continuous streaming: {e}", "ERROR")
-        
+            log_and_save(f"❌ Error in continuous streaming: {e}", "ERROR", self.id_instance)
+
     def start_audio_recording(self, pulse_device):
         """Inicia el hilo de grabación de audio."""
 
         pulse_device_monitor = f"{pulse_device}.monitor"
-        log(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}", "INFO")
+        log_and_save(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}", "INFO", self.id_instance)
         self.recording_thread = threading.Thread(
             target=self.record_audio, 
             args=(pulse_device_monitor,), 
@@ -108,23 +108,23 @@ class AudioClientSession:
 
     def cleanup(self):
         """Limpieza de recursos al finalizar."""
-        log("Cleaning up Audio Client Session", "WARN")
+        log_and_save("Cleaning up Audio Client Session", "WARN", self.id_instance)
 
         # Señalar a todos los hilos que paren
         self.stop_event.set()
 
         # Esperar a que termine el hilo de grabación
         if self.recording_thread and self.recording_thread.is_alive():
-            log("🔥 Waiting for recording thread to finish...", "INFO")
+            log_and_save("🔥 Waiting for recording thread to finish...", "INFO", self.id_instance)
             self.recording_thread.join(timeout=10)
 
         # Descargar módulo PulseAudio
         if self.module_id:
-            log(f"🎧 Unloading PulseAudio module: {self.module_id}", "INFO")
+            log_and_save(f"🎧 Unloading PulseAudio module: {self.module_id}", "INFO", self.id_instance)
             try:
                 subprocess.run(["pactl", "unload-module", self.module_id], check=True)
             except Exception as e:
-                log(f"⚠️ Failed to unload PulseAudio module: {e}", "ERROR")
+                log_and_save(f"⚠️ Failed to unload PulseAudio module: {e}", "ERROR", self.id_instance)
 
-        log("✅ Cleanup: Audio Client Session complete.", "SUCCESS")
+        log_and_save("✅ Cleanup: Audio Client Session complete.", "SUCCESS", self.id_instance)
 

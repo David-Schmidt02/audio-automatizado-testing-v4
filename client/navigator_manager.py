@@ -8,15 +8,16 @@ import psutil
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
-from my_logger import log
+from my_logger import log_and_save
 from flags_navigators.flags_comunes import CHROME_CHROMIUM_COMMON_FLAGS, GRAPHICS_MIN_FLAGS, PRODUCTION_FLAGS
 
 class Navigator():
-    def __init__(self, name, sink_name, headless):
+    def __init__(self, name, sink_name, headless, ssrc):
         self.navigator_name = name
         self.profile_path = None
         self.sink_name = sink_name
         self.headless = headless
+        self.ssrc = ssrc
 
         self.browser_process = None
         self.navigator_profile_dir = None
@@ -33,7 +34,7 @@ class Navigator():
         elif self.navigator_name == "Chromium":
             return self.create_chromium_profile()
         else:
-            log("❌ Navegador no soportado", "ERROR")
+            log_and_save("❌ Navegador no soportado", "ERROR", self.ssrc)
             return None
 
     def create_firefox_profile(self):
@@ -60,11 +61,11 @@ class Navigator():
         try:
             with open(prefs_js, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(preferences))
-            log(f"📁 Perfil Firefox creado: {self.navigator_profile_dir}", "INFO")
+            log_and_save(f"📁 Perfil Firefox creado: {self.navigator_profile_dir}", "INFO", self.ssrc)
             return self.navigator_profile_dir
         except Exception as e:
             self.navigator_profile_dir = None
-            log(f"❌ Error creando perfil: {e}", "ERROR")
+            log_and_save(f"❌ Error creando perfil: {e}", "ERROR", self.ssrc)
             return None
         
     def create_firefox_profile_for_snap(self):
@@ -92,7 +93,7 @@ class Navigator():
         profile_name = f"chrome-profile-{self.random_id}"
         self.navigator_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.navigator_profile_dir, exist_ok=True)
-        log(f"📁 Perfil Chrome creado: {self.navigator_profile_dir}", "INFO")
+        log_and_save(f"📁 Perfil Chrome creado: {self.navigator_profile_dir}", "INFO", self.ssrc)
         return self.navigator_profile_dir
 
     def create_chromium_profile(self):
@@ -102,13 +103,13 @@ class Navigator():
         profile_name = f"chromium-profile-{self.random_id}"
         self.navigator_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.navigator_profile_dir, exist_ok=True)
-        log(f"📁 Perfil de Chromium creado: {self.navigator_profile_dir}", "INFO")
+        log_and_save(f"📁 Perfil de Chromium creado: {self.navigator_profile_dir}", "INFO", self.ssrc)
         return self.navigator_profile_dir
 
 
     def launch_navigator(self, url, display_num):
         """Lanza el navegador especificado con el sink preconfigurado y perfil ya creado."""
-        log(f"🚀 Launching {self.navigator_name} with URL: {url}", "INFO")
+        log_and_save(f"🚀 Launching {self.navigator_name} with URL: {url}", "INFO", self.ssrc)
 
         # Variables de entorno
         env = os.environ.copy()
@@ -122,10 +123,10 @@ class Navigator():
                 self.browser_process = self.launch_chrome(url, env)
             elif self.navigator_name == "Chromium":
                 self.browser_process = self.launch_chromium(url, env)
-            log(f"✅ {self.navigator_name} launched with preconfigured audio sink and autoplay", "INFO")
+            log_and_save(f"✅ {self.navigator_name} launched with preconfigured audio sink and autoplay", "INFO", self.ssrc)
             return self.browser_process
         except Exception as e:
-            log(f"❌ Error lanzando {self.navigator_name}: {e}", "ERROR")
+            log_and_save(f"❌ Error lanzando {self.navigator_name}: {e}", "ERROR", self.ssrc)
             return None
 
     def launch_firefox(self, url, env):
@@ -192,11 +193,11 @@ class Navigator():
                 return
 
             if not children:
-                log("No child processes found to terminate.", "WARN")
+                log_and_save("No child processes found to terminate.", "WARN", self.ssrc)
                 return
 
             for child in children:
-                log(f"⚠️ Killing child process {child.pid}", "WARN")
+                log_and_save(f"⚠️ Killing child process {child.pid}", "WARN", self.ssrc)
                 try:
                     child.terminate()
                 except Exception:
@@ -204,19 +205,19 @@ class Navigator():
 
             gone, alive = psutil.wait_procs(children, timeout=3)
             for p in alive:
-                log(f"⚠️ Forcibly killing child process {p.pid}", "WARN")
+                log_and_save(f"⚠️ Forcibly killing child process {p.pid}", "WARN", self.ssrc)
                 try:
                     p.kill()
                 except Exception:
                     pass
         else:
-            log("No child processes to terminate.", "INFO")
+            log_and_save("No child processes to terminate.", "INFO", self.ssrc)
 
     def cerrar_navegador(self):
         """Cierra el proceso de navegador (Chrome/Chromium/Firefox) y sus hijos si están en ejecución."""
         if hasattr(self, 'browser_process') and self.browser_process:
-            log("🔥 Terminating navegador...", "WARN")
-            log(f"Proceso de navegador: {self.browser_process.pid}", "INFO")
+            log_and_save("🔥 Terminating navegador...", "WARN", self.ssrc)
+            log_and_save(f"Proceso de navegador: {self.browser_process.pid}", "INFO", self.ssrc)
 
             try:
                 # 1. primero los hijos
@@ -230,21 +231,21 @@ class Navigator():
                     pass
 
             except Exception as e:
-                log(f"⚠️ Failed to terminate navegador: {e}", "ERROR")
+                log_and_save(f"⚠️ Failed to terminate navegador: {e}", "ERROR", self.ssrc)
                 try:
                     self.browser_process.kill()
                 except Exception:
                     pass
     
     def limpiar_perfil_navegador(self):
-        log("🔥 Cleaning up navegador profile...", "WARN")
+        log_and_save("🔥 Cleaning up navegador profile...", "WARN", self.ssrc)
         if self.navigator_profile_dir and os.path.exists(self.navigator_profile_dir):
             try:
                 import shutil
                 shutil.rmtree(self.navigator_profile_dir)
-                log(f"🗑️ Perfil Navegador eliminado: {self.navigator_profile_dir}", "SUCCESS")
+                log_and_save(f"🗑️ Perfil Navegador eliminado: {self.navigator_profile_dir}", "SUCCESS", self.ssrc)
             except Exception as e:
-                log(f"⚠️ Error eliminando perfil Navegador: {e}", "ERROR")
+                log_and_save(f"⚠️ Error eliminando perfil Navegador: {e}", "ERROR", self.ssrc)
 
     def cleanup(self):
         """Limpia los recursos utilizados por el administrador del navegador."""

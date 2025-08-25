@@ -34,3 +34,12 @@ def log(message, level="INFO"):
     }
     color = color_map.get(level, Colors.WHITE)
     print(f"{color}[{timestamp}] [{level}] {message}{Colors.END}")
+
+def log_and_save(message, level, ssrc):
+    log(message, level)
+    log_dir = "client/logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = f"{log_dir}/{ssrc}-client.log"
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"[{level}] {message}\n")

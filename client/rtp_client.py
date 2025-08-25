@@ -5,7 +5,7 @@ from rtp import RTP, PayloadType
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
-from my_logger import log
+from my_logger import log_and_save
 from config import FRAME_SIZE, RTP_VERSION, DEST_IP, DEST_PORT
 # PAYLOAD_TYPE termina sobreescribiendose con el de la clase de la libreria rtp
 # Configuración RTP
@@ -35,7 +35,7 @@ def send_rtp_stream_to_server (data, id_instance):
         rtp_packet = create_rtp_packet(bytearray(frame), SEQUENCE_NUMBER)
         sock.sendto(rtp_packet.toBytearray(), (DEST_IP, DEST_PORT))
         if SEQUENCE_NUMBER % 100 == 0:
-            log(f"📤 Enviado paquete seq {SEQUENCE_NUMBER} (raw stream)", "DEBUG")
+            log_and_save(f"📤 Enviado paquete seq {SEQUENCE_NUMBER} (raw stream)", "DEBUG", SSRC)
         SEQUENCE_NUMBER = (SEQUENCE_NUMBER + 1) % 65536
         offset += frame_bytes
 
