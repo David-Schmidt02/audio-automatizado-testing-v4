@@ -29,14 +29,12 @@ class Navigator():
         """Crea un directorio de perfil para el navegador."""
         if self.navigator_name == "Firefox":
             return self.create_firefox_profile()
-        elif self.navigator_name == "Chrome":
-            return self.create_chrome_profile()
-        elif self.navigator_name == "Chromium":
-            return self.create_chromium_profile()
+        elif self.navigator_name == "Chrome" or self.navigator_name == "Chromium":
+            return self.create_chrome_chromium_profile()
         else:
             log_and_save("❌ Navegador no soportado", "ERROR", self.ssrc)
             return None
-
+    
     def create_firefox_profile(self):
         """Crea un directorio temporal para el perfil de Firefox."""
         # Recordemos que no sirve de mucho ejecutar firefox en modo headless porque igual se procesa la visualización
@@ -86,26 +84,17 @@ class Navigator():
         self.navigator_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.navigator_profile_dir, exist_ok=True)
 
-    def create_chrome_profile(self):
-        """Crea un directorio de perfil de Google Chrome en ~/.config/google-chrome/ con nombre único."""
-        base_dir = os.path.expanduser("~/.config/google-chrome/")
+    def create_chrome_chromium_profile(self):
+        """Crea un directorio de perfil para Chrome y Chromium."""
+        base_dir = os.path.expanduser("~/.config/")
         os.makedirs(base_dir, exist_ok=True)
-        profile_name = f"chrome-profile-{self.random_id}"
+        # Nombre único para el perfil
+        if self.navigator_name == "Chrome":
+            profile_name = f"chrome-autoplay-{self.random_id}"
+        else:
+            profile_name = f"chrome-chromium-autoplay-{self.random_id}"
         self.navigator_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.navigator_profile_dir, exist_ok=True)
-        log_and_save(f"📁 Perfil Chrome creado: {self.navigator_profile_dir}", "INFO", self.ssrc)
-        return self.navigator_profile_dir
-
-    def create_chromium_profile(self):
-        """Crea un directorio de perfil para Chromium en ~/.config/chromium/ con nombre único."""
-        base_dir = os.path.expanduser("~/.config/chromium/")
-        os.makedirs(base_dir, exist_ok=True)
-        profile_name = f"chromium-profile-{self.random_id}"
-        self.navigator_profile_dir = os.path.join(base_dir, profile_name)
-        os.makedirs(self.navigator_profile_dir, exist_ok=True)
-        log_and_save(f"📁 Perfil de Chromium creado: {self.navigator_profile_dir}", "INFO", self.ssrc)
-        return self.navigator_profile_dir
-
 
     def launch_navigator(self, url, display_num):
         """Lanza el navegador especificado con el sink preconfigurado y perfil ya creado."""
@@ -142,29 +131,16 @@ class Navigator():
         """Lanza Google Chrome en modo headless usando el perfil creado y el display indicado."""
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
 
-        cmd = [
-                "google-chrome", 
-                #"--disable-gpu",  # Si hay problemas con la GPU
-                "--window-size=1920,1080",
-                "--incognito",
-                "--autoplay-policy=no-user-gesture-required",
-                "--disable-notifications",
-                "--disable-popup-blocking",
-                "--disable-extensions",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-features=ChromeWhatsNewUI,Translate,BackgroundNetworking",
-                "--disable-sync",
-                "--disable-component-update",
-                "--disable-default-apps",
-                "--disable-translate", 
-                "--disable-infobars",
-                "--disable-signin-promo",
-                "--disable-software-rasterizer",  # Mejor que --enable-unsafe-swiftshader
-                "--disable-dev-shm-usage",  # Útil en entornos limitados (Docker/Linux)
-            ] + profile_args + [url]
-        if self.headless:
-            cmd.insert(1, "--headless")
+        cmd = (
+            ["chrome"]
+            + CHROME_CHROMIUM_COMMON_FLAGS
+            + GRAPHICS_MIN_FLAGS
+            + PRODUCTION_FLAGS
+            + profile_args
+            + [url]
+        )
+        """if self.headless:
+            cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)
 
     def launch_chromium(self, url, env):
@@ -182,7 +158,6 @@ class Navigator():
         if self.headless:
             cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)
-
 
     def terminate_child_processes(self, browser_process):
         if browser_process.poll() is None:  # el padre sigue vivo
