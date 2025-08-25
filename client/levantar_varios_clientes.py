@@ -18,11 +18,12 @@ def main():
     headless = "False"
     navigator = "Chrome"  # o "Chromium"
     # Construir los argumentos como string para bash
-    python_env_exec = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/activate") 
+    env_active = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/activate")
+    python_env_interprete = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/python")
     script_path = os.path.abspath("main.py") # convierte el main.py en una ruta absoluta
     for url in urls:
         print(f"Processing {url}")
-        cmd = f"{python_env_exec} {script_path} '{url}' '{headless}'"
+        cmd = f"{python_env_interprete} {script_path} '{url}' '{headless}'"
         subprocess.Popen(["gnome-terminal", "--", "bash", "-c", cmd])
         time.sleep(2)
 
