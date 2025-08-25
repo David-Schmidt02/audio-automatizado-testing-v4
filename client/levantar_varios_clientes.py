@@ -16,17 +16,14 @@ urls = [url1, url2, url3, url4, url5, url6, url7, url8]
 
 def main():
     headless = "False"
+    navigator = "Chrome"  # o "Chromium"
+    # Construir los argumentos como string para bash
+    python_env_exec = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/activate") 
+    script_path = os.path.abspath("main.py") # convierte el main.py en una ruta absoluta
     for url in urls:
         print(f"Processing {url}")
-        # Construir los argumentos como string para bash
-        #python_exec = sys.executable # se obtiene la ruta absoluta
-        python_exec = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/python")
-        script_path = os.path.abspath("main.py") # convierte el main.py en una ruta absoluta
-        #cmd = f"source ~/Desktop/Soflex/audio-test-env/bin/activate && {python_exec} {script_path} '{url}' '{headless}'"
-        #subprocess.Popen([
-        #    "gnome-terminal", "--", "bash", "-c", cmd
-        #])
-        subprocess.Popen([python_exec, script_path, url, headless])
+        cmd = f"{python_env_exec} {script_path} '{url}' '{headless}'"
+        subprocess.Popen(["gnome-terminal", "--", "bash", "-c", cmd])
         time.sleep(2)
 
 if __name__ == "__main__":
