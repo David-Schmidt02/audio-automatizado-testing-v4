@@ -34,6 +34,7 @@ class Navigator():
 
     def create_chrome_chromium_profile(self):
         """Crea un directorio de perfil para Chrome y Chromium."""
+        log_and_save(f"🛠️ Creating profile for {self.navigator_name}", "INFO", self.ssrc)
         base_dir = os.path.expanduser("~/.config/")
         os.makedirs(base_dir, exist_ok=True)
         # Nombre único para el perfil
@@ -43,6 +44,7 @@ class Navigator():
             profile_name = f"chrome-chromium-autoplay-{self.random_id}"
         self.navigator_profile_dir = os.path.join(base_dir, profile_name)
         os.makedirs(self.navigator_profile_dir, exist_ok=True)
+        return self.navigator_profile_dir
 
 
     def launch_navigator(self, url, display_num):
@@ -68,15 +70,25 @@ class Navigator():
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
 
         navigator_name = self.navigator_name.lower()
-
-        cmd = (
-            [navigator_name]
+        if navigator_name == "chrome":
+            cmd = (
+            ["google-chrome"]
             + CHROME_CHROMIUM_COMMON_FLAGS
             + GRAPHICS_MIN_FLAGS
             + PRODUCTION_FLAGS
             + profile_args
             + [url]
         )
+        else:
+            cmd = (
+            ["chromium"]
+            + CHROME_CHROMIUM_COMMON_FLAGS
+            + GRAPHICS_MIN_FLAGS
+            + PRODUCTION_FLAGS
+            + profile_args
+            + [url]
+            )
+
         """if self.headless:
             cmd.insert(1, "--headless")"""
         return subprocess.Popen(cmd, env=env)

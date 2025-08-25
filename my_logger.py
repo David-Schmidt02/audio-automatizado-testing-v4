@@ -37,7 +37,8 @@ def log(message, level="INFO"):
 
 def log_and_save(message, level, ssrc):
     log(message, level)
-    log_dir = "client/logs"
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    log_dir = os.path.join(base_dir, "client/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_file = f"{log_dir}/{ssrc}-client.log"

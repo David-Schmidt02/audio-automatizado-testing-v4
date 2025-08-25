@@ -94,7 +94,7 @@ def monitor_browser_process(browser_process, max_ram_mb=500, max_runtime_sec=720
             break  # El navegador ya terminó
 
 
-def levantar_script_nueva_terminal():
+def levantar_script_misma_terminal():
     # Relanzamiento en la misma ventana:
     import os
     import sys
@@ -159,24 +159,20 @@ def main():
     # Configurar señales para cleanup
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
     # 2. Crear sink PulseAudio único
     sink_name = audio_client_session.create_pulse_sink()
     if not sink_name:
         audio_client_session.cleanup()
         sys.exit(1)
-
     # 2.1 Crear el manager de browser
     # Manager del navegador
     navigator_manager = Navigator(navigator_name, sink_name, headless, id_instance)
-
     # 3. Crear perfil del Navegador (con autoplay)
     navigator_profile_dir = navigator_manager.create_navigator_profile()
     if not navigator_profile_dir:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
         sys.exit(1)
-
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
@@ -207,7 +203,7 @@ def main():
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log_and_save(f"Proceso de navegador: {navigator_process}", "INFO", id_instance)
 
-    time.sleep(1)  # darle tiempo a que se abra la ventana
+    time.sleep(2)  # darle tiempo a que se abra la ventana
     result = subprocess.run(
         ["xdotool", "getactivewindow"],
         capture_output=True, text=True
@@ -215,9 +211,12 @@ def main():
     window_id = result.stdout.strip()
 
     # Minimizar la ventana del navegador tras 5 segundos (solo Linux con xdotool)
-    if navigator_process:
+    if navigator_process and window_id:
         threading.Thread(target=minimizar_ventana_por_id, args=(window_id, 5), daemon=True).start()
-
+    else:
+        log_and_save("❌ No se pudo obtener el ID de la ventana", "ERROR", id_instance)
+    
+    log_and_save(f"ID de ventana obtenida: {window_id}", "INFO", id_instance)
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
@@ -228,7 +227,6 @@ def main():
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
     log_and_save(f"⏳ Esperando que {navigator_name} se inicie completamente...", "INFO", id_instance)
     time.sleep(5)
-
 
     # 6. Iniciar captura y grabación de audio
     log_and_save("🎵 Iniciando captura de audio...", "INFO", id_instance)
@@ -267,10 +265,9 @@ def main():
         log_and_save("Cerrando xvfb_manager...", "INFO", id_instance)
         xvfb_manager.stop_xvfb()
     log_and_save("✅ Todos los programas cerrados. Saliendo...", "INFO", id_instance)
-
     # Si el shutdown fue por RAM/tiempo (no por Ctrl+C), relanzar
     if shutdown_reason['auto'] and not shutdown_reason['sigint']:
-        levantar_script_nueva_terminal()
+        levantar_script_misma_terminal()
 
     # Forzar salida de todos los hilos y procesos hijos
     os._exit(0)
