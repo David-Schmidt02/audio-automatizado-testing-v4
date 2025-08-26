@@ -1,10 +1,10 @@
 # Flags para afinidad y prioridad de CPU (ejemplo: usar con taskset, chrt, nice)
 CPU_FLAGS = {
     # Afinidad de CPU: lista de núcleos a usar (ejemplo: "0,1" para los dos primeros cores)
-    "taskset": "0",
+    #"taskset": "0",
     # Prioridad en tiempo real (chrt) o nice
-    "chrt": 20,  # Prioridad FIFO (más alto = más prioridad)
-    "nice": -10, # Prioridad de nice (más bajo = más prioridad)
+    #"chrt": 20,  # Prioridad FIFO (más alto = más prioridad)
+    #"nice": -10, # Prioridad de nice (más bajo = más prioridad)
 }
 CHROME_CHROMIUM_COMMON_FLAGS = [
     "--window-size=1920,1080",  # Tamaño de ventana
