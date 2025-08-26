@@ -9,7 +9,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
 from my_logger import log_and_save
-from flags_navigators.flags_comunes import CHROME_CHROMIUM_COMMON_FLAGS, GRAPHICS_MIN_FLAGS, PRODUCTION_FLAGS
+from flags_nav_ffmpeg.flags_comunes import CHROME_CHROMIUM_COMMON_FLAGS, GRAPHICS_MIN_FLAGS, PRODUCTION_FLAGS
 
 class Navigator():
     def __init__(self, name, sink_name, headless, ssrc):
@@ -66,31 +66,33 @@ class Navigator():
             return None
 
     def launch_chrome_chromium(self, url, env):
-        """Lanza Google Chrome o Chromium en modo headless usando el perfil creado y el display indicado."""
+        """Lanza Google Chrome o Chromium en modo headless usando el perfil creado y el display indicado, con afinidad/prioridad si es Linux."""
+        from flags_nav_ffmpeg.flags_comunes import CPU_FLAGS
+        import platform
         profile_args = [f"--user-data-dir={self.navigator_profile_dir}"]
-
         navigator_name = self.navigator_name.lower()
         if navigator_name == "chrome":
-            cmd = (
-            ["google-chrome"]
+            base_cmd = ["google-chrome"]
+        else:
+            base_cmd = ["chromium"]
+        cmd = (
+            base_cmd
             + CHROME_CHROMIUM_COMMON_FLAGS
             + GRAPHICS_MIN_FLAGS
             + PRODUCTION_FLAGS
             + profile_args
             + [url]
         )
-        else:
-            cmd = (
-            ["chromium"]
-            + CHROME_CHROMIUM_COMMON_FLAGS
-            + GRAPHICS_MIN_FLAGS
-            + PRODUCTION_FLAGS
-            + profile_args
-            + [url]
-            )
-
-        """if self.headless:
-            cmd.insert(1, "--headless")"""
+        # Solo aplicar en Linux
+        if platform.system() == "Linux":
+            cpu_cmd = []
+            if CPU_FLAGS.get("taskset"):
+                cpu_cmd += ["taskset", "-c", str(CPU_FLAGS["taskset"])]
+            if CPU_FLAGS.get("chrt"):
+                cpu_cmd += ["chrt", "-f", str(CPU_FLAGS["chrt"])]
+            if CPU_FLAGS.get("nice"):
+                cpu_cmd += ["nice", "-n", str(CPU_FLAGS["nice"])]
+            cmd = cpu_cmd + cmd
         return subprocess.Popen(cmd, env=env)
 
 

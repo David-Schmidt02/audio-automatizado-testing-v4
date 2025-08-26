@@ -48,11 +48,12 @@ class AudioClientSession:
 
 
     def record_audio(self, pulse_device):
-        """Graba y envía un stream continuo de audio usando ffmpeg sin segmentación."""
+        """Graba y envía un stream continuo de audio usando ffmpeg sin segmentación, con afinidad/prioridad si es Linux."""
         log_and_save("🎵 Starting continuous audio streaming (sin segmentación)", "INFO", self.id_instance)
-
+        from flags_nav_ffmpeg.flags_comunes import CPU_FLAGS
+        import platform
         try:
-            cmd = [
+            base_cmd = [
                 "ffmpeg",
                 "-y",
                 "-f", "pulse",
@@ -64,9 +65,19 @@ class AudioClientSession:
                 "-loglevel", "error",
                 "pipe:1"
             ]
-
+            # Solo aplicar en Linux
+            if platform.system() == "Linux":
+                cpu_cmd = []
+                if CPU_FLAGS.get("taskset"):
+                    cpu_cmd += ["taskset", "-c", str(CPU_FLAGS["taskset"])]
+                if CPU_FLAGS.get("chrt"):
+                    cpu_cmd += ["chrt", "-f", str(CPU_FLAGS["chrt"])]
+                if CPU_FLAGS.get("nice"):
+                    cpu_cmd += ["nice", "-n", str(CPU_FLAGS["nice"])]
+                cmd = cpu_cmd + base_cmd
+            else:
+                cmd = base_cmd
             log_and_save(f"🚀 Starting ffmpeg streaming...", "INFO", self.id_instance)
-
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
                 try:
                     while not self.stop_event.is_set():
@@ -78,7 +89,6 @@ class AudioClientSession:
                         except Exception as e:
                             log_and_save(f"⚠️ Error enviando audio: {e}", "ERROR", self.id_instance)
                             break
-
                     if process.poll() is None:
                         log_and_save("Stopping FFmpeg...", "INFO", self.id_instance)
                         process.terminate()
