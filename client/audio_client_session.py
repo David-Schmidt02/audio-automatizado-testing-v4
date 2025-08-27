@@ -20,7 +20,7 @@ class AudioClientSession:
         self.module_id = None
         self.recording_thread = None
 
-
+        self.sequence_number = 0
         self.id_instance = id_instance
         self.output_dir = None
         self.stop_event = threading.Event()
@@ -74,7 +74,7 @@ class AudioClientSession:
                         if not data:
                             break
                         try:
-                            send_rtp_stream_to_server(data, self.id_instance)
+                            self.sequence_number = send_rtp_stream_to_server(data, self.id_instance, self.sequence_number)
                         except Exception as e:
                             log_and_save(f"⚠️ Error enviando audio: {e}", "ERROR", self.id_instance)
                             break

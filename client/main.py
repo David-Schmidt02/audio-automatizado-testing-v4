@@ -203,7 +203,7 @@ def main():
     navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
     log_and_save(f"Proceso de navegador: {navigator_process}", "INFO", id_instance)
 
-    time.sleep(2)  # darle tiempo a que se abra la ventana
+    time.sleep(10)  # darle tiempo a que se abra la ventana
     result = subprocess.run(
         ["xdotool", "getactivewindow"],
         capture_output=True, text=True

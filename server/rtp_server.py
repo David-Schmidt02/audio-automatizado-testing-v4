@@ -43,7 +43,10 @@ def udp_listener_fixed_jitter():
     Escucha paquetes UDP y los procesa como flujos de audio RTP.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1<<20)
+    # Aumentar el buffer UDP a 8 MB para soportar más tráfico simultáneo
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8<<20)
+    actual_buf = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+    log(f"[UDP] Buffer de recepción configurado: {actual_buf // (1024*1024)} MB", "INFO")
     sock.bind((LISTEN_IP, LISTEN_PORT))
     log(f"🎧 Listening for RTP audio on {LISTEN_IP}:{LISTEN_PORT}", "INFO")
     log("🔊 Saving incoming audio streams to .wav files...", "INFO")

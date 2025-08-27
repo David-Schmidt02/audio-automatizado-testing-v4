@@ -1,0 +1,70 @@
+[INFO] 🎧 Creating audio sink: audio-sink-51772
+[INFO] ✅ Audio sink created with module ID: 536870918
+[INFO] 🛠️ Creating profile for Chromium
+[INFO] 📡 Enviando metadata: {"ssrc": 11044, "channel": "C5N"}
+[INFO] ✅ Canal extraído: C5N
+[INFO] 🚀 Launching Chromium with URL: https://www.youtube.com/@C5N/live
+[INFO] ✅ Chromium launched with preconfigured audio sink and autoplay
+[INFO] Proceso de navegador: <Popen: returncode: None args: ['chromium', '--window-size=1920,1080', '--in...>
+[INFO] ID de ventana obtenida: 60817412
+[INFO] ⏳ Esperando que Chromium se inicie completamente...
+[INFO] 🎵 Iniciando captura de audio...
+[INFO] 🎤 Starting audio capture from PulseAudio source: audio-sink-51772.monitor
+[INFO] 🎵 Starting continuous audio streaming (sin segmentación)
+[INFO] 🔍 Iniciando monitor de uso de RAM del navegador...
+[INFO] 🚀 Starting ffmpeg streaming...
+[INFO] 🎯 System initialized successfully!
+[INFO] Press Ctrl+C to stop...
+[DEBUG] 📤 Enviado paquete seq 0 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 100 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 200 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 300 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 400 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 500 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 600 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 700 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 800 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 900 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1000 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1100 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1200 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1300 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1400 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1500 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1600 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1700 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1800 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 1900 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2000 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2100 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2200 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2300 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2400 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2500 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2600 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2700 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2800 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 2900 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3000 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3100 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3200 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3300 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3400 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3500 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3600 (raw stream)
+[DEBUG] 📤 Enviado paquete seq 3700 (raw stream)
+[INFO] Stopping FFmpeg...
+[SUCCESS] ✅ FFmpeg stopped successfully.
+[INFO] 🛑 Shutdown solicitado por el usuario o señal externa. Cerrando programas...
+[INFO] Cerrando audio_client_session...
+[WARN] Cleaning up Audio Client Session
+[INFO] 🎧 Unloading PulseAudio module: 536870918
+[ERROR] ⚠️ Failed to unload PulseAudio module: Command '['pactl', 'unload-module', '536870918']' returned non-zero exit status 1.
+[SUCCESS] ✅ Cleanup: Audio Client Session complete.
+[INFO] Cerrando navigator_manager...
+[WARN] 🔥 Terminating navegador...
+[INFO] Proceso de navegador: 4163
+[WARN] ⚠️ Killing child process 4189
+[WARN] 🔥 Cleaning up navegador profile...
+[SUCCESS] 🗑️ Perfil Navegador eliminado: /home/admin/.config/chrome-chromium-autoplay-88744
+[INFO] ✅ Todos los programas cerrados. Saliendo...

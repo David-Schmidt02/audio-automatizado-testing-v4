@@ -91,6 +91,7 @@ class Navigator():
 
         """if self.headless:
             cmd.insert(1, "--headless")"""
+        
         return subprocess.Popen(cmd, env=env)
 
 
