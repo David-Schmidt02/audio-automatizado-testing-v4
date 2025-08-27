@@ -17,32 +17,20 @@ url8 = "https://www.youtube.com/@UrbanaPlayFM/live"
 
 urls = [url1, url2, url3, url4, url5, url6, url7, url8]
 
-"""def main():
-    headless = "False"
-    navigator = "Chromium"  # o "Chromium"
-    # Construir los argumentos como string para bash
-    env_active = os.path.expanduser("~/Soflex/audio-test-env/bin/activate")
-    python_env_interprete = os.path.expanduser("~/Soflex/audio-test-env/bin/python")
-    script_path = os.path.abspath("main.py") # convierte el main.py en una ruta absoluta
-    print(f"Cantidad de canales abiertos: {len(urls)}")
-    for url in urls:
-        print(f"Processing {url}")
-        cmd = f"{python_env_interprete} {script_path} '{url}' '{navigator}' '{headless}'; exec bash"
-        subprocess.Popen(["gnome-terminal", "--", "bash", "-c", cmd])
-        time.sleep(10)"""
-
 def main():
-    headless = "False"
+    formato = "ffmpeg" # o parec
     navigator = "Chromium"
     env_active = os.path.expanduser("~/Soflex/audio-test-env/bin/activate")
     python_env_interprete = os.path.expanduser("~/Soflex/audio-test-env/bin/python")
     script_path = os.path.abspath("main.py")
-    num_cores = 6  # Cambia este valor según los núcleos que quieras usar
+    #num_cores = 6  # Cambia este valor según los núcleos que quieras usar
 
     for i, url in enumerate(urls):
         print(f"Processing {url}")
-        core = i % num_cores  # Asigna núcleo de forma cíclica
-        cmd = f"taskset -c {core} {python_env_interprete} {script_path} '{url}' '{navigator}' '{headless}'; exec bash"
+        #core = i % num_cores  # Asigna núcleo de forma cíclica
+        """cmd = f"taskset -c {core} {python_env_interprete} {script_path} '{url}' '{navigator}' '{formato}'; exec bash"
+        """
+        cmd = f"{python_env_interprete} {script_path} '{url}' '{navigator}' '{formato}'; exec bash"
         subprocess.Popen(["gnome-terminal", "--", "bash", "-c", cmd])
         time.sleep(20)
 
