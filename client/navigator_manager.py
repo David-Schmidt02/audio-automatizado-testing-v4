@@ -12,7 +12,7 @@ from my_logger import log_and_save
 from flags_nav_ffmpeg.flags_comunes import CHROME_CHROMIUM_COMMON_FLAGS, GRAPHICS_MIN_FLAGS, PRODUCTION_FLAGS
 
 class Navigator():
-    def __init__(self, name, sink_name, headless, ssrc):
+    def __init__(self, name, sink_name, ssrc, headless = None):
         self.navigator_name = name
         self.profile_path = None
         self.sink_name = sink_name
@@ -47,7 +47,7 @@ class Navigator():
         return self.navigator_profile_dir
 
 
-    def launch_navigator(self, url, display_num):
+    def launch_navigator(self, url, display_num = None):
         """Lanza el navegador especificado con el sink preconfigurado y perfil ya creado."""
         log_and_save(f"🚀 Launching {self.navigator_name} with URL: {url}", "INFO", self.ssrc)
 

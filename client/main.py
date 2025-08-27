@@ -140,15 +140,13 @@ def main():
 
     # 1. Validar argumentos de línea de comandos
     if len(sys.argv) != 4:
-        print(f"Usage: {sys.argv[0]} <URL> <Navegador> <Headless>")
-        print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'Chrome/Chromium' True")
+        print(f"Usage: {sys.argv[0]} <URL> <Navegador> <Formato>")
+        print(f"\nExample: {sys.argv[0]} 'https://www.youtube.com/@todonoticias/live' 'ffmpeg/parec' True")
         sys.exit(1)
 
     url = sys.argv[1]
     navigator_name = sys.argv[2]
-    headless = sys.argv[3].lower() == 'true'
-    if headless:
-        HEADLESS = True
+    formato = sys.argv[3].lower()
 
     # Variables globales para cleanup
     id_instance = random.randint(10000, 100000)
@@ -166,41 +164,23 @@ def main():
         sys.exit(1)
     # 2.1 Crear el manager de browser
     # Manager del navegador
-    navigator_manager = Navigator(navigator_name, sink_name, headless, id_instance)
+    navigator_manager = Navigator(navigator_name, sink_name, id_instance)
     # 3. Crear perfil del Navegador (con autoplay)
     navigator_profile_dir = navigator_manager.create_navigator_profile()
     if not navigator_profile_dir:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
         sys.exit(1)
-    # 3.1 Crear Display de XVFB con el numero asignado por el servidor
+    # 3.1 Crear Display de XVFB con el numero asignado por el servidor -> No lo necesitamos
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
     send_channel_metadata(channel_name, id_instance)
     time.sleep(1)  # Esperar un poco para que el servidor procese la metadata
     log_and_save(f"✅ Canal extraído: {channel_name}", "INFO", id_instance)
-    if headless:
-        XVFB_DISPLAY = return_display_number(id_instance)
-        if not XVFB_DISPLAY:
-            log_and_save("❌ No se pudo obtener el número de display", "ERROR", id_instance)
-            audio_client_session.cleanup()
-            navigator_manager.cleanup()
-            sys.exit(1)
-        else:
-            log_and_save(f"✅ Variable de entorno DISPLAY configurada: {XVFB_DISPLAY}", "INFO", id_instance)
-
-        xvfb_manager = Xvfb_manager(XVFB_DISPLAY) 
-        xvfb_process = xvfb_manager.start_xvfb()
-
-        if not xvfb_process:
-            audio_client_session.cleanup()
-            navigator_manager.cleanup()
-            xvfb_manager.stop_xvfb()
-            sys.exit(1)
 
 
     # 4. Lanzar Navegador con sink preconfigurado y perfil optimizado
-    navigator_process = navigator_manager.launch_navigator(url, XVFB_DISPLAY)
+    navigator_process = navigator_manager.launch_navigator(url)
     log_and_save(f"Proceso de navegador: {navigator_process}", "INFO", id_instance)
 
     time.sleep(10)  # darle tiempo a que se abra la ventana
@@ -220,8 +200,6 @@ def main():
     if not navigator_process:
         audio_client_session.cleanup()
         navigator_manager.cleanup()
-        if headless:
-            xvfb_manager.stop_xvfb()
         sys.exit(1)
 
     # 5. Esperar un poco para que Chrome inicie y luego configurar control de ads
@@ -230,7 +208,7 @@ def main():
 
     # 6. Iniciar captura y grabación de audio
     log_and_save("🎵 Iniciando captura de audio...", "INFO", id_instance)
-    thread_audio_capture = audio_client_session.start_audio_recording(sink_name)
+    thread_audio_capture = audio_client_session.start_audio_recording(sink_name, formato)
     
 
     # 6.1 Iniciar Hilo que controla los mb del browser

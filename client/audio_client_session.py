@@ -47,37 +47,36 @@ class AudioClientSession:
             return None
 
 
-    def record_audio(self, pulse_device):
+    def record_audio(self, pulse_device, formato):
         """Graba y envía un stream continuo de audio usando ffmpeg sin segmentación, con afinidad/prioridad si es Linux."""
         log_and_save("🎵 Starting continuous audio streaming (sin segmentación)", "INFO", self.id_instance)
         from flags_nav_ffmpeg.flags_comunes import CPU_FLAGS
         import platform
         try:
-            base_cmd = [
-                "ffmpeg",
-                "-y",
-                "-f", "pulse",
-                "-i", pulse_device,
-                "-acodec", "pcm_s16le",
-                "-ar", "48000",
-                "-ac", "1",
-                "-f", "s16le",     # ⚠️ NO "wav"
-                "-loglevel", "error",
-                "pipe:1"
-            ]
-            # Solo aplicar en Linux
-            if platform.system() == "Linux":
-                cpu_cmd = []
-                if CPU_FLAGS.get("taskset"):
-                    cpu_cmd += ["taskset", "-c", str(CPU_FLAGS["taskset"])]
-                if CPU_FLAGS.get("chrt"):
-                    cpu_cmd += ["chrt", "-f", str(CPU_FLAGS["chrt"])]
-                if CPU_FLAGS.get("nice"):
-                    cpu_cmd += ["nice", "-n", str(CPU_FLAGS["nice"])]
-                cmd = cpu_cmd + base_cmd
-            else:
-                cmd = base_cmd
-            log_and_save(f"🚀 Starting ffmpeg streaming...", "INFO", self.id_instance)
+            # Grabacion con ffmpeg
+            if formato == "ffmpeg":
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-f", "pulse",
+                    "-i", pulse_device,
+                    "-acodec", "pcm_s16le",
+                    "-ar", "48000",
+                    "-ac", "1",
+                    "-f", "s16le",     # ⚠️ NO "wav"
+                    "-loglevel", "error",
+                    "pipe:1"
+                ]
+                # Grabacion con parec
+            if formato == "parec":
+                cmd = [
+                    "parec",
+                    "-d", pulse_device,
+                    "--rate=48000",
+                    "--channels=1",
+                    "--format=s16le"
+                ]
+            log_and_save(f"🚀 Starting {formato.upper()} streaming...", "INFO", self.id_instance)
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
                 try:
                     while not self.stop_event.is_set():
@@ -102,14 +101,14 @@ class AudioClientSession:
         except Exception as e:
             log_and_save(f"❌ Error in continuous streaming: {e}", "ERROR", self.id_instance)
 
-    def start_audio_recording(self, pulse_device):
+    def start_audio_recording(self, pulse_device, formato):
         """Inicia el hilo de grabación de audio."""
 
         pulse_device_monitor = f"{pulse_device}.monitor"
         log_and_save(f"🎤 Starting audio capture from PulseAudio source: {pulse_device_monitor}", "INFO", self.id_instance)
         self.recording_thread = threading.Thread(
             target=self.record_audio, 
-            args=(pulse_device_monitor,), 
+            args=(pulse_device_monitor, formato), 
             daemon=True
         )
         self.recording_thread.start()
