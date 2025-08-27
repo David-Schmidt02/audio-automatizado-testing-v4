@@ -1,8 +1,0 @@
-[INFO] 🎧 Creating audio sink: audio-sink-16593
-[INFO] ✅ Audio sink created with module ID: 536870913
-[INFO] 🛠️ Creating profile for Chromium
-[INFO] 📡 Enviando metadata: {"ssrc": 14115, "channel": "olgaenvivo_"}
-[INFO] ✅ Canal extraído: olgaenvivo_
-[INFO] 🚀 Launching Chromium with URL: https://www.youtube.com/@olgaenvivo_/live
-[INFO] ✅ Chromium launched with preconfigured audio sink and autoplay
-[INFO] Proceso de navegador: <Popen: returncode: None args: ['chromium', '--window-size=1920,1080', '--in...>
