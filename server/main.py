@@ -85,8 +85,8 @@ if __name__ == "__main__":
     num_display_thread = threading.Thread(target=obtain_display_num_listener, args=(LISTEN_IP, NUM_DISPLAY_PORT,), daemon=True)
     num_display_thread.start()
 
-    log_buffer_size_thread = threading.Thread(target=log_buffer_sizes_periodically, daemon=True)
-    log_buffer_size_thread.start()
+    """log_buffer_size_thread = threading.Thread(target=log_buffer_sizes_periodically, daemon=True)
+    log_buffer_size_thread.start()"""
 
     listener_thread = threading.Thread(target=udp_listener_fixed_jitter, daemon=True)
     listener_thread.start()
