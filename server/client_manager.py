@@ -111,18 +111,19 @@ def start_worker_client(ssrc):
 
 
 def get_or_create_client(ssrc, seq_num):
+    client = clients.get(ssrc)
+    if client is not None:
+        return client
     with clients_lock:
-        if ssrc not in clients:
-            clients[ssrc] = {
-                'wavefile': create_wav_file(ssrc, wav_index=0),
-                'lock': threading.Lock(),
-                'buffer': dict(),
-                'next_seq': seq_num,
-                'last_time': time.time(),
-                'wav_start_time': time.time(),  # Marca el inicio del archivo actual
-                'wav_index': 0,                 # Contador de archivos para ese cliente
-
-            }
-            t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
-            t.start()
+        clients[ssrc] = {
+            'wavefile': create_wav_file(ssrc, wav_index=0),
+            'lock': threading.Lock(),
+            'buffer': dict(),
+            'next_seq': seq_num,
+            'last_time': time.time(),
+            'wav_start_time': time.time(),  # Marca el inicio del archivo actual
+            'wav_index': 0,                 # Contador de archivos para ese cliente
+        }
+        t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
+        t.start()
     return clients[ssrc]
