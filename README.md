@@ -9,7 +9,7 @@ Sistema automatizado para grabar audio desde streams de video y transmitirlo en 
 ```
 Cliente (Linux)          Servidor (Linux/Windows)
 ┌─────────────────┐     ┌─────────────────────┐
-│   Firefox/Chrome│     │                     │
+│   Chromium/Chrome│     │                     │
 │   ↓             │     │   UDP Socket        │
 │   PulseAudio    │     │   ↓                 │
 │   ↓             │────▶│   RTP Parser        │

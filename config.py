@@ -8,11 +8,11 @@ SAMPLE_FORMAT = "int16"
 
 # IPs
 # Configuracion para el Cliente: Dirección IP y puerto del servidor RTP
-DEST_IP = "172.21.100.148"  
+DEST_IP = "192.168.0.82"  
 DEST_PORT = 6001
 METADATA_PORT = 6002
 # Configuracion para el Servidor: Dirección IP y puerto del cliente RTP
-LISTEN_IP = "172.21.100.148" # Debe ser la de la misma máquina Host 192.168.0.....
+LISTEN_IP = "192.168.0.82" # Debe ser la de la misma máquina Host 192.168.0.....
 LISTEN_PORT = 6001 # Puerto de escucha del cliente RTP, debe ser el mismo que DEST_PORT 
 NUM_DISPLAY_PORT = 6003
 

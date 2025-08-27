@@ -12,21 +12,6 @@ else
     echo "Google Chrome ya está instalado."
 fi
 
-echo "=== Instalando Firefox clásico (ppa:mozillateam/ppa) ==="
-sudo add-apt-repository ppa:mozillateam/ppa -y
-sudo apt update
-sudo apt install firefox -y
-echo "=== Eliminando versiones Snap de Firefox, Chrome y Chromium si existen ==="
-for pkg in firefox chromium chromium-browser google-chrome; do
-    if snap list | grep -q "^$pkg "; then
-        echo "Desinstalando Snap de $pkg..."
-        sudo snap remove --purge $pkg || true
-    fi
-done
-echo "✅ Versiones Snap eliminadas (si existían)"
-#!/bin/bash
-set -e
-
 echo "=== SETUP AUDIO AUTOMATIZADO TESTING V4 - SISTEMA RTP ==="
 echo "Sistema de streaming de audio en tiempo real con RTP usando Python 3.12+"
 echo ""
@@ -73,63 +58,10 @@ sudo apt install -y \
     unzip \
     curl \
     netcat-openbsd \
-    net-tools
+    net-tools \
+    xdotool
 
 echo "✅ Dependencias del sistema instaladas"
-
-
-echo "Firefox instalado correctamente:"
-
-# --- Manejo moderno de Firefox (Snap o APT) ---
-echo "=== Verificando Firefox ==="
-if command -v firefox &> /dev/null; then
-    echo "Firefox ya está instalado:"
-    firefox --version
-    echo "Actualizando Firefox..."
-    if snap list | grep -q firefox; then
-        sudo snap refresh firefox
-    else
-        sudo apt update
-        sudo apt install --only-upgrade -y firefox
-    fi
-else
-    echo "Firefox no está instalado. Instalando versión Snap..."
-    sudo snap install firefox
-    echo "Firefox instalado:"
-    firefox --version
-fi
-
-# Instalar GeckoDriver para Firefox + Selenium
-echo "=== Configurando GeckoDriver para Firefox ==="
-
-# Obtener la última versión de GeckoDriver
-GECKODRIVER_VERSION=$(curl -sS "https://api.github.com/repos/mozilla/geckodriver/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
-
-if [ -z "$GECKODRIVER_VERSION" ]; then
-    echo "No se pudo obtener la versión de GeckoDriver. Usando webdriver-manager como fallback."
-    echo "GeckoDriver será manejado automáticamente por webdriver-manager"
-else
-    echo "GeckoDriver version to install: $GECKODRIVER_VERSION"
-    
-    # Descargar y instalar GeckoDriver
-    wget -N "https://github.com/mozilla/geckodriver/releases/download/v$GECKODRIVER_VERSION/geckodriver-v$GECKODRIVER_VERSION-linux64.tar.gz"
-    tar -xzf "geckodriver-v$GECKODRIVER_VERSION-linux64.tar.gz"
-    sudo mv geckodriver /usr/local/bin/
-    sudo chmod +x /usr/local/bin/geckodriver
-    rm "geckodriver-v$GECKODRIVER_VERSION-linux64.tar.gz"
-    
-    echo "GeckoDriver instalado correctamente:"
-    geckodriver --version
-fi
-
-# Configurar Firefox para headless y audio (mínimas configuraciones necesarias)
-echo "=== Configurando Firefox para pruebas automatizadas ==="
-
-# Solo crear directorio básico - Firefox manejará el resto automáticamente
-FIREFOX_PROFILE_DIR="$HOME/.mozilla/firefox/selenium-profile"
-mkdir -p "$FIREFOX_PROFILE_DIR"
-
-echo "Perfil básico de Firefox preparado en: $FIREFOX_PROFILE_DIR"
 
 # Verificar que estamos en un entorno virtual
 if [[ "$VIRTUAL_ENV" == "" ]]; then
@@ -230,8 +162,6 @@ echo "📦 Dependencias Python:"
 python3.12 -c "import selenium; print(f'  Selenium: {selenium.__version__}')"
 python3.12 -c "import rtp; print(f'  RTP: {rtp.__version__ if hasattr(rtp, \"__version__\") else \"installed\"}')" 2>/dev/null || echo "  RTP: ❌ No disponible"
 
-echo "🌐 Firefox:"
-firefox --version
 
 echo "🎵 Audio:"
 pulseaudio --version
@@ -244,17 +174,11 @@ else
     echo "  Netcat: ❌ No disponible"
 fi
 
-if command -v geckodriver &> /dev/null; then
-  geckodriver --version
-else
-  echo "  GeckoDriver: Será manejado por webdriver-manager automáticamente"
-fi
 
 echo ""
 echo "=== INSTALACIÓN COMPLETADA - AUDIO AUTOMATIZADO TESTING V4 ==="
 echo "🚀 Sistema RTP listo para streaming de audio"
 echo "🐍 Python 3.12 configurado correctamente"  
-echo "🌐 Firefox y Selenium listos para automatización"
 echo "🎵 PulseAudio configurado para captura de audio"
 echo "📦 FFmpeg listo para procesamiento de audio"
 echo ""
