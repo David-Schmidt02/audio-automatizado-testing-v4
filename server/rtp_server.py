@@ -35,6 +35,12 @@ def handle_rtp_packet(client, seq_num, payload):
             return False
         client['buffer'][seq_num] = payload
         client['last_time'] = time.time()
+        # Actualizar next_seq al menor seq_num presente en el buffer si es necesario
+        if client['buffer']:
+            min_seq = min(client['buffer'].keys())
+            if client['next_seq'] > min_seq or client['next_seq'] not in client['buffer']:
+                log(f"[RTP][Buffer] Corrigiendo next_seq de {client['next_seq']} a {min_seq} (buffer contiene: {sorted(client['buffer'].keys())})", "INFO")
+                client['next_seq'] = min_seq
         # Log para diagnosticar el llenado del buffer
         keys = sorted(client['buffer'].keys())
         buffer_str = f"{keys[:5]} ... {keys[-5:]}" if len(keys) > 10 else str(keys)

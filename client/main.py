@@ -189,7 +189,6 @@ def main():
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
 
-    server_conection()
 
     send_channel_metadata(channel_name, id_instance)
     time.sleep(1)  # Esperar un poco para que el servidor procese la metadata
