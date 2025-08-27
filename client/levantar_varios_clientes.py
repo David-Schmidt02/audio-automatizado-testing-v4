@@ -15,13 +15,13 @@ url8 = "https://www.youtube.com/@UrbanaPlayFM/live"
 
 
 
-urls = [url1, url2, url3, url4, url5, url6, url7, url8]
+urls = [url1, url2, url3, url4]
 
 def main():
     formato = "ffmpeg" # o parec
     navigator = "Chromium"
-    env_active = os.path.expanduser("~/Soflex/audio-test-env/bin/activate")
-    python_env_interprete = os.path.expanduser("~/Soflex/audio-test-env/bin/python")
+    env_active = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/activate")
+    python_env_interprete = os.path.expanduser("~/Desktop/Soflex/audio-test-env/bin/python")
     script_path = os.path.abspath("main.py")
     #num_cores = 6  # Cambia este valor según los núcleos que quieras usar
 

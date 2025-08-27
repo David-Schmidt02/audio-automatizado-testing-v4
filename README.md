@@ -50,6 +50,7 @@ sudo apt install -y python3.12 python3.12-venv git
 ### 2. Crear y activar entorno virtual
 
 ```bash
+cd Desktop
 python3.12 -m venv audio-test-env
 source audio-test-env/bin/activate
 ```
@@ -120,7 +121,9 @@ python main.py
 ### Cliente
 ```bash
 cd client/
-python main.py --url "https://stream-url.com/live"
+python main.py "https://stream-url.com/live" "ffmpeg/parec"
+# Podrías levantar varios clientes con:
+python levantar_varios_clientes.py "https://stream-url.com/live" "ffmpeg/parec"
 ```
 
 ---
