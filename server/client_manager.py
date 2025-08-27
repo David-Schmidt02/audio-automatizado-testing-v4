@@ -58,6 +58,12 @@ def process_buffer(client, ssrc):
     buffer = client['buffer']
     next_seq = client['next_seq']
     while buffer:
+        # Log de huecos en la secuencia si hay más de un paquete
+        if len(buffer) > 1:
+            keys = sorted(buffer.keys())
+            gaps = [b - a for a, b in zip(keys[:-1], keys[1:])]
+            if any(g > 1 for g in gaps):
+                log(f"[JitterBuffer][GAP] Cliente {ssrc}: Secuencias en buffer: {keys}, huecos: {[i for i, g in enumerate(gaps) if g > 1]}", "WARN")
         # Verificar si hay que segmentar el archivo
         if time.time() - client['wav_start_time'] >= WAV_SEGMENT_SECONDS:
             client['wavefile'].close()
