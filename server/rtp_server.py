@@ -35,6 +35,10 @@ def handle_rtp_packet(client, seq_num, payload):
             return False
         client['buffer'][seq_num] = payload
         client['last_time'] = time.time()
+        # Log para diagnosticar el llenado del buffer
+        keys = sorted(client['buffer'].keys())
+        buffer_str = f"{keys[:5]} ... {keys[-5:]}" if len(keys) > 10 else str(keys)
+        log(f"[RTP][Buffer] Cliente {client['wavefile'].name}: len(buffer)={len(client['buffer'])}, seq agregada={seq_num}, buffer={buffer_str}", "DEBUG")
         return True
 
 

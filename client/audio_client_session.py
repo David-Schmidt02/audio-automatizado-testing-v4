@@ -76,6 +76,7 @@ class AudioClientSession:
                     "--channels=1",
                     "--format=s16le"
                 ]
+
             log_and_save(f"🚀 Starting {formato.upper()} streaming...", "INFO", self.id_instance)
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as process:
                 try:

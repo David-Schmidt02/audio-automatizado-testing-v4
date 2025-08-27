@@ -38,7 +38,9 @@ def handle_inactivity(client, ssrc):
     """
     Maneja la inactividad de un cliente, cerrando su archivo WAV si ha estado inactivo durante más de INACTIVITY_TIMEOUT segundos.
     """
-    if not client['buffer'] and time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
+    # Cerrar el cliente si no se han procesado paquetes en INACTIVITY_TIMEOUT segundos,
+    # aunque el buffer no esté vacío (para evitar clientes zombies)
+    if time.time() - client['last_time'] > INACTIVITY_TIMEOUT:
         try:
             client['wavefile'].close()
             client['wavefile'] = None  # Eliminar referencia para liberar memoria
@@ -124,6 +126,7 @@ def get_or_create_client(ssrc, seq_num):
             'wav_start_time': time.time(),  # Marca el inicio del archivo actual
             'wav_index': 0,                 # Contador de archivos para ese cliente
         }
+        log(f"[Init] Cliente nuevo {ssrc}: next_seq inicializado en {seq_num}", "INFO")
         t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
         t.start()
     return clients[ssrc]

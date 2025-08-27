@@ -27,6 +27,7 @@ def check_prefill(buffer, prefill_done, client_id):
     """
     Verifica si el pre-llenado del jitter buffer ha sido completado.
     """
+    log(f"[JitterBuffer] Cliente {client_id}: len(buffer) = {len(buffer)} (prefill_done={prefill_done})", "DEBUG")
     if not prefill_done:
         if len(buffer) >= JITTER_BUFFER_SIZE:
             log(f"[JitterBuffer] Cliente {client_id}: pre-llenado completado con {len(buffer)} paquetes", "INFO")

@@ -47,6 +47,20 @@ def send_channel_metadata(channel_name, ssrc):
     sock.sendto(msg.encode(), (DEST_IP, METADATA_PORT))
     sock.close()
 
+def udp_handshake(ssrc):
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    handshake_msg = f"HANDSHAKE:{ssrc}"
+    sock.sendto(handshake_msg.encode(), (DEST_IP, DEST_PORT))
+    # (Opcional) Esperar respuesta del server
+    try:
+        sock.settimeout(2)
+        data, _ = sock.recvfrom(1024)
+        print(f"Handshake response: {data.decode()}")
+    except socket.timeout:
+        print("No handshake response from server.")
+    sock.close()
+
 
 def return_display_number(ssrc):
     import socket
@@ -174,6 +188,9 @@ def main():
     # 3.1 Crear Display de XVFB con el numero asignado por el servidor -> No lo necesitamos
     # 3.1 Además obtener el nombre del canal para crear la carpeta con su nombre
     channel_name = extract_channel_name(url)
+
+    server_conection()
+
     send_channel_metadata(channel_name, id_instance)
     time.sleep(1)  # Esperar un poco para que el servidor procese la metadata
     log_and_save(f"✅ Canal extraído: {channel_name}", "INFO", id_instance)
