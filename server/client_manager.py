@@ -73,19 +73,55 @@ def process_buffer(client, ssrc):
             client['wavefile'] = create_wav_file(ssrc, wav_index=client['wav_index'])
             client['wav_start_time'] = time.time()
             log(f"[Segmentación] Nuevo archivo WAV para {ssrc}, segmento {client['wav_index']}", "INFO")
+            
         if next_seq in buffer:
-            payload = buffer.pop(next_seq)
+            # Extraer payload del nuevo formato de buffer
+            packet_info = buffer.pop(next_seq)
+            if isinstance(packet_info, dict):
+                payload = packet_info['payload']
+                rtp_ts = packet_info.get('rtp_timestamp', 0)
+                arrival = packet_info.get('arrival_mon', 0)
+                log(f"[Buffer][Process] Procesando seq={next_seq}, rtp_ts={rtp_ts}, arrival={arrival:.6f}", "DEBUG")
+            else:
+                # Compatibilidad con formato anterior (solo payload)
+                payload = packet_info
+                
             client['wavefile'].writeframes(payload)
             client['next_seq'] = next_seq = (next_seq + 1) % 65536
             client['last_time'] = time.time()
+            client['fill_packets'] += 1
         else:
+            # Mejorar la lógica de timeout/salto con ordenamiento modular
             if len(buffer) >= JITTER_BUFFER_SIZE and time.time() - client['last_time'] > MAX_WAIT:
-                min_seq = min(buffer.keys())
-                log(f"[JitterBuffer] Timeout o lag, saltando de seq={next_seq} a seq={min_seq} (buffer: {sorted(buffer.keys())})", "WARN")
-                client['next_seq'] = next_seq = min_seq
+                # Encontrar la secuencia más cercana a next_seq en orden modular
+                next_candidate = find_next_sequence_modular(buffer.keys(), next_seq)
+                log(f"[JitterBuffer] Timeout o lag, saltando de seq={next_seq} a seq={next_candidate} (buffer: {sorted(buffer.keys())})", "WARN")
+                client['next_seq'] = next_seq = next_candidate
                 client['last_time'] = time.time()
             else:
                 break
+
+
+def find_next_sequence_modular(buffer_keys, current_next):
+    """
+    Encuentra la siguiente secuencia más apropiada usando aritmética modular.
+    """
+    if not buffer_keys:
+        return current_next
+        
+    keys = list(buffer_keys)
+    
+    # Calcular distancias modulares desde current_next
+    distances = []
+    for key in keys:
+        distance = (key - current_next) % 65536
+        if distance > 32768:  # Si está en la segunda mitad, es hacia atrás
+            distance = distance - 65536
+        distances.append((abs(distance), key))
+    
+    # Ordenar por distancia y tomar el más cercano
+    distances.sort()
+    return distances[0][1]
 
 
 def start_worker_client(ssrc):
@@ -123,6 +159,9 @@ def get_or_create_client(ssrc, seq_num):
     if client is not None:
         return client
     with clients_lock:
+        # Obtener el nombre del canal desde channel_map
+        channel_name = channel_map.get(str(ssrc), f"client_{ssrc}")
+        
         clients[ssrc] = {
             'wavefile': create_wav_file(ssrc, wav_index=0),
             'lock': threading.Lock(),
@@ -131,8 +170,11 @@ def get_or_create_client(ssrc, seq_num):
             'last_time': time.time(),
             'wav_start_time': time.time(),  # Marca el inicio del archivo actual
             'wav_index': 0,                 # Contador de archivos para ese cliente
+            'name': channel_name,           # Nombre del canal
+            'fill_packets': 0,              # Contador de paquetes recibidos
+            'jitter_state': None,           # Se inicializa en handle_rtp_packet
         }
-        log(f"[Init] Cliente nuevo {ssrc}: next_seq inicializado en {seq_num}", "INFO")
+        log(f"[Init] Cliente nuevo {ssrc} ({channel_name}): next_seq inicializado en {seq_num}", "INFO")
         t = threading.Thread(target=start_worker_client, args=(ssrc,), daemon=True)
         t.start()
     return clients[ssrc]
